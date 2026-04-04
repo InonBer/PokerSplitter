@@ -1,0 +1,4 @@
+{"type":"server-started","port":53615,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:53615","screen_dir":"/Users/inonbereshit/Work/PokerSplitter/.superpowers/brainstorm/11630-1775299715"}
+{"type":"screen-added","file":"/Users/inonbereshit/Work/PokerSplitter/.superpowers/brainstorm/11630-1775299715/screen-flow.html"}
+{"type":"screen-added","file":"/Users/inonbereshit/Work/PokerSplitter/.superpowers/brainstorm/11630-1775299715/wireframes.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -23,9 +23,11 @@
 
 - [ ] **Step 1: Scaffold the project**
 
+Note: The git repo is already initialized at `/Users/inonbereshit/Work/PokerSplitter` (with the `docs/` folder committed). Use `.` to scaffold Expo in-place rather than creating a subdirectory.
+
 ```bash
-npx create-expo-app@latest PokerSplitter --template blank-typescript
-cd PokerSplitter
+cd /Users/inonbereshit/Work/PokerSplitter
+npx create-expo-app@latest . --template blank-typescript
 ```
 
 - [ ] **Step 2: Install dependencies**

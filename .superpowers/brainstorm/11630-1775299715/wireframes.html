@@ -1,0 +1,237 @@
+<h2>Key Screen Wireframes</h2>
+<p class="subtitle">Tap a screen to select it as your preferred layout</p>
+
+<style>
+  .screens-grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .phone {
+    width: 200px;
+    background: #1e1e2e;
+    border: 2px solid #44475a;
+    border-radius: 20px;
+    padding: 12px 10px;
+    font-size: 11px;
+    color: #cdd6f4;
+  }
+  .phone-title {
+    text-align: center;
+    font-size: 10px;
+    color: #89b4fa;
+    font-weight: bold;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .phone-header {
+    background: #313244;
+    border-radius: 8px 8px 0 0;
+    padding: 8px 10px;
+    font-weight: bold;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .phone-body {
+    background: #181825;
+    border-radius: 0 0 8px 8px;
+    padding: 8px;
+    min-height: 280px;
+  }
+  .row {
+    background: #313244;
+    border-radius: 6px;
+    padding: 7px 8px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .row .name { font-weight: bold; font-size: 11px; }
+  .row .meta { color: #6c7086; font-size: 10px; }
+  .row .amount { color: #a6e3a1; font-size: 11px; font-weight: bold; }
+  .row .negative { color: #f38ba8; }
+  .btn {
+    background: #89b4fa;
+    color: #1e1e2e;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 5px;
+  }
+  .btn.secondary {
+    background: #313244;
+    color: #cdd6f4;
+  }
+  .btn.danger {
+    background: #f38ba8;
+    color: #1e1e2e;
+  }
+  .btn.green {
+    background: #a6e3a1;
+    color: #1e1e2e;
+  }
+  .action-row {
+    display: flex;
+    gap: 4px;
+    margin-top: 3px;
+  }
+  .tag {
+    font-size: 9px;
+    background: #45475a;
+    border-radius: 3px;
+    padding: 1px 4px;
+    color: #bac2de;
+  }
+  .divider {
+    height: 1px;
+    background: #313244;
+    margin: 6px 0;
+  }
+  .fab {
+    background: #89b4fa;
+    color: #1e1e2e;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 8px;
+  }
+  .input-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+    align-items: center;
+  }
+  .input-box {
+    background: #313244;
+    border-radius: 5px;
+    padding: 5px 7px;
+    flex: 1;
+    font-size: 10px;
+    color: #6c7086;
+  }
+  .settlement-item {
+    background: #313244;
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 6px;
+    text-align: center;
+    font-size: 11px;
+  }
+  .settlement-item .from { color: #f38ba8; }
+  .settlement-item .to { color: #a6e3a1; }
+  .settlement-item .arrow-txt { color: #6c7086; margin: 0 4px; }
+  .settlement-item .sum { font-size: 14px; font-weight: bold; color: #cdd6f4; margin-top: 2px; }
+</style>
+
+<div class="screens-grid">
+
+  <!-- Screen 1: Home -->
+  <div class="phone">
+    <div class="phone-title">Home</div>
+    <div class="phone-header">
+      <span>PokerSplitter</span>
+      <span style="font-size:9px;color:#89b4fa;">+ New</span>
+    </div>
+    <div class="phone-body">
+      <div style="font-size:9px;color:#6c7086;margin-bottom:6px;">RECENT GAMES</div>
+      <div class="row">
+        <div>
+          <div class="name">Fri, Apr 4</div>
+          <div class="meta">4 players · Finished</div>
+        </div>
+        <div class="tag">›</div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="name">Sat, Mar 29</div>
+          <div class="meta">6 players · Finished</div>
+        </div>
+        <div class="tag">›</div>
+      </div>
+      <div class="row" style="border: 1px solid #a6e3a1;">
+        <div>
+          <div class="name">Tonight</div>
+          <div class="meta">3 players · Active</div>
+        </div>
+        <div class="tag" style="color:#a6e3a1;">Live ›</div>
+      </div>
+      <div class="fab">+ New Game</div>
+    </div>
+  </div>
+
+  <!-- Screen 3: Active Game -->
+  <div class="phone">
+    <div class="phone-title">Active Game</div>
+    <div class="phone-header">
+      <span>← Game</span>
+      <span style="font-size:10px;">Pot: $150</span>
+    </div>
+    <div class="phone-body">
+      <div class="row">
+        <div>
+          <div class="name">Inon</div>
+          <div class="meta">In: $50</div>
+        </div>
+        <div class="action-row">
+          <div class="btn secondary" style="padding:3px 7px;">Rebuy</div>
+          <div class="btn danger" style="padding:3px 7px;">Cash Out</div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="name">Dave</div>
+          <div class="meta">In: $100 · 2 rebuys</div>
+        </div>
+        <div class="action-row">
+          <div class="btn secondary" style="padding:3px 7px;">Rebuy</div>
+          <div class="btn danger" style="padding:3px 7px;">Cash Out</div>
+        </div>
+      </div>
+      <div class="row" style="opacity:0.5;">
+        <div>
+          <div class="name">Sarah</div>
+          <div class="meta">Cashed out · $30</div>
+        </div>
+        <div class="tag">Out</div>
+      </div>
+      <div class="divider"></div>
+      <div class="btn danger" style="margin-top:8px;">End Game</div>
+    </div>
+  </div>
+
+  <!-- Screen 5: Settlement -->
+  <div class="phone">
+    <div class="phone-title">Settlement</div>
+    <div class="phone-header">
+      <span>← Result</span>
+      <span style="font-size:9px;color:#89b4fa;">Share</span>
+    </div>
+    <div class="phone-body">
+      <div style="font-size:9px;color:#6c7086;margin-bottom:6px;">WHO PAYS WHO</div>
+      <div class="settlement-item">
+        <div><span class="from">Dave</span><span class="arrow-txt">→</span><span class="to">Inon</span></div>
+        <div class="sum">$45</div>
+      </div>
+      <div class="settlement-item">
+        <div><span class="from">Mike</span><span class="arrow-txt">→</span><span class="to">Inon</span></div>
+        <div class="sum">$20</div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:#6c7086;text-align:center;margin-bottom:8px;">2 transfers · Total pot $150</div>
+      <div class="btn green">Share Results</div>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center;font-size:11px;color:#6c7086;margin-top:16px;">Home · Active Game · Settlement — the three most important screens</p>
