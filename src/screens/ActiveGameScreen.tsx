@@ -23,7 +23,7 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
       if (found) {
         navigation.setOptions({ title: `Pot: $${pot(found).toFixed(2)}` });
       }
-    }, [gameId]),
+    }, [gameId, navigation]),
   );
 
   function pot(g: Game): number {
@@ -33,17 +33,21 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
   }
 
   function addTransaction(playerId: string, type: 'rebuy' | 'cashout', amount: number) {
-    if (!game) return;
-    const tx: Transaction = { id: uuidv4(), type, amount, timestamp: Date.now() };
-    const updated: Game = {
-      ...game,
-      players: game.players.map(p =>
-        p.id === playerId ? { ...p, transactions: [...p.transactions, tx] } : p,
-      ),
-    };
-    updateGame(updated);
-    setGame(updated);
-    navigation.setOptions({ title: `Pot: $${pot(updated).toFixed(2)}` });
+    // Use functional updater to read current state — avoids stale closure
+    // if two prompts somehow overlap (e.g. rapid double-tap on different players).
+    setGame(prev => {
+      if (!prev) return prev;
+      const tx: Transaction = { id: uuidv4(), type, amount, timestamp: Date.now() };
+      const updated: Game = {
+        ...prev,
+        players: prev.players.map(p =>
+          p.id === playerId ? { ...p, transactions: [...p.transactions, tx] } : p,
+        ),
+      };
+      updateGame(updated);
+      navigation.setOptions({ title: `Pot: $${pot(updated).toFixed(2)}` });
+      return updated;
+    });
   }
 
   function promptAmount(title: string, onConfirm: (amount: number) => void) {
