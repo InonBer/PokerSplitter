@@ -1,20 +1,31 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+// App.tsx
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { RootStackParamList } from './src/types';
+import HomeScreen from './src/screens/HomeScreen';
+import GameSetupScreen from './src/screens/GameSetupScreen';
+import ActiveGameScreen from './src/screens/ActiveGameScreen';
+import FinalChipCountScreen from './src/screens/FinalChipCountScreen';
+import SettlementScreen from './src/screens/SettlementScreen';
+import GameDetailScreen from './src/screens/GameDetailScreen';
+
+const Stack = createStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Home">
+          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'PokerSplitter' }} />
+          <Stack.Screen name="GameSetup" component={GameSetupScreen} options={{ title: 'New Game' }} />
+          <Stack.Screen name="ActiveGame" component={ActiveGameScreen} options={{ title: 'Game' }} />
+          <Stack.Screen name="FinalChipCount" component={FinalChipCountScreen} options={{ title: 'Chip Count' }} />
+          <Stack.Screen name="Settlement" component={SettlementScreen} options={{ title: 'Settlement' }} />
+          <Stack.Screen name="GameDetail" component={GameDetailScreen} options={{ title: 'Game Detail' }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
