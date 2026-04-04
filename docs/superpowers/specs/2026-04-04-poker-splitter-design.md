@@ -49,9 +49,11 @@ interface Game {
 ```
 
 **Derived values (computed, not stored):**
-- `totalIn(player)` = sum of all `buyin` + `rebuy` transactions − sum of `cashout` transactions
-- `net(player)` = `finalChips ?? cashedOutAmount` − `totalIn`
-- `pot` = sum of all `buyin` + `rebuy` transactions across all players
+- `totalIn(player)` = sum of all `buyin` + `rebuy` transaction amounts for that player
+- `cashedOutAmount(player)` = sum of all `cashout` transaction amounts for that player
+- `net(player)` = `(finalChips ?? cashedOutAmount(player)) − totalIn(player)`
+  - If the player cashed out early, `finalChips` is undefined and `cashedOutAmount` is used instead
+- `pot` = sum of all `buyin` + `rebuy` transactions across all players (gross; does not subtract cashouts)
 
 ---
 
@@ -76,14 +78,14 @@ interface Game {
   - Name
   - Total amount in (buy-ins + rebuys − cashouts)
   - "Rebuy" button → prompt for amount → adds a `rebuy` transaction
-  - "Cash Out" button → prompt for amount → adds a `cashout` transaction, marks player as Out
+  - "Cash Out" button → prompt for amount → adds a `cashout` transaction, marks player as Out. Only one cash-out per player is allowed; the button is hidden once the player is Out.
 - Players who have cashed out are shown greyed out with an "Out" badge
 - "End Game" button → Final Chip Count screen
 
 ### 4. Final Chip Count
 - Lists only players who have NOT cashed out
 - Input field per player to enter their final chip count
-- Validation: sum of all final chip counts must equal the remaining pot (total in − total cashed out). Shows a warning if mismatch.
+- Validation: sum of all final chip counts must equal `pot − sum of all cashedOutAmounts`. Shows a warning if mismatch.
 - "Calculate" button → Settlement screen
 
 ### 5. Settlement
@@ -123,6 +125,8 @@ This greedy approach produces the minimum number of transfers for typical cases.
 ## Storage
 
 All games are stored in MMKV as a JSON-serialized array under the key `"games"`. On app load, the array is read into memory. On every mutation (add player, rebuy, end game, etc.), the array is re-serialized and written back.
+
+Settlement transfers are **not stored** — they are re-derived on demand from the player transaction data using the settlement algorithm. This keeps the stored data minimal and avoids sync issues.
 
 ---
 
