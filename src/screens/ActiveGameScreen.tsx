@@ -1,13 +1,14 @@
 // src/screens/ActiveGameScreen.tsx
 import React, { useState, useCallback } from 'react';
 import {
-  View, FlatList, TouchableOpacity, Text, StyleSheet, Alert,
+  View, FlatList, TouchableOpacity, Text, StyleSheet, Alert, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList, Game, Transaction } from '../types';
 import { loadGames, updateGame } from '../storage';
 import PlayerRow from '../components/PlayerRow';
+import AmountModal from '../components/AmountModal';
 import { v4 as uuidv4 } from 'uuid';
 
 type Props = StackScreenProps<RootStackParamList, 'ActiveGame'>;
@@ -15,6 +16,7 @@ type Props = StackScreenProps<RootStackParamList, 'ActiveGame'>;
 export default function ActiveGameScreen({ route, navigation }: Props) {
   const { gameId } = route.params;
   const [game, setGame] = useState<Game | null>(null);
+  const [modal, setModal] = useState<{ title: string; onConfirm: (n: number) => void } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,10 +53,8 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
   }
 
   function promptAmount(title: string, onConfirm: (amount: number) => void) {
-    Alert.prompt(
-      title,
-      'Enter amount:',
-      [
+    if (Platform.OS === 'ios') {
+      Alert.prompt(title, 'Enter amount:', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
@@ -67,11 +67,10 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
             onConfirm(amount);
           },
         },
-      ],
-      'plain-text',
-      '',
-      'decimal-pad',
-    );
+      ], 'plain-text', '', 'decimal-pad');
+    } else {
+      setModal({ title, onConfirm });
+    }
   }
 
   function handleRebuy(playerId: string) {
@@ -112,6 +111,14 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
       <TouchableOpacity style={styles.endBtn} onPress={handleEndGame}>
         <Text style={styles.endBtnText}>End Game</Text>
       </TouchableOpacity>
+      {modal && (
+        <AmountModal
+          visible
+          title={modal.title}
+          onConfirm={amount => { modal.onConfirm(amount); setModal(null); }}
+          onCancel={() => setModal(null)}
+        />
+      )}
     </View>
   );
 }

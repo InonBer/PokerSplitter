@@ -1,0 +1,89 @@
+// src/components/AmountModal.tsx
+import React, { useState } from 'react';
+import {
+  Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
+} from 'react-native';
+
+interface Props {
+  visible: boolean;
+  title: string;
+  onConfirm: (amount: number) => void;
+  onCancel: () => void;
+}
+
+export default function AmountModal({ visible, title, onConfirm, onCancel }: Props) {
+  const [value, setValue] = useState('');
+
+  function handleConfirm() {
+    const amount = parseFloat(value);
+    if (!isNaN(amount) && amount > 0) {
+      onConfirm(amount);
+      setValue('');
+    }
+  }
+
+  function handleCancel() {
+    setValue('');
+    onCancel();
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.overlay}>
+        <View style={styles.box}>
+          <Text style={styles.title}>{title}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter amount"
+            keyboardType="decimal-pad"
+            value={value}
+            onChangeText={setValue}
+            autoFocus
+          />
+          <View style={styles.buttons}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+              <Text style={styles.confirmText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  box: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 24,
+    width: '80%',
+  },
+  title: { fontSize: 17, fontWeight: '700', marginBottom: 16, color: '#111' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  buttons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  cancelBtn: { padding: 10 },
+  cancelText: { color: '#777', fontSize: 15 },
+  confirmBtn: {
+    backgroundColor: '#1a73e8',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  confirmText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+});
