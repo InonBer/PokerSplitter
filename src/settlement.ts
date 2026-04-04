@@ -3,8 +3,15 @@ import { Player, Transfer } from './types';
 
 /** Returns net gain/loss per player (positive = winner, negative = loser).
  *  Keyed by player name (not id) — matches how transfers reference players.
+ *  Throws if two players share the same name (would silently drop one debt).
  */
 export function computeNets(players: Player[]): Record<string, number> {
+  const seen = new Set<string>();
+  for (const p of players) {
+    if (seen.has(p.name)) throw new Error(`Duplicate player name: "${p.name}"`);
+    seen.add(p.name);
+  }
+
   const nets: Record<string, number> = {};
 
   for (const player of players) {

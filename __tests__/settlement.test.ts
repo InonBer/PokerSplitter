@@ -44,6 +44,14 @@ describe('computeNets', () => {
     expect(nets['Dave']).toBeCloseTo(-20);
   });
 
+  it('throws when two players share the same name', () => {
+    const players = [
+      makePlayer('Alice', [50], [], [], 80),
+      makePlayer('Alice', [50], [], [], 20),
+    ];
+    expect(() => computeNets(players)).toThrow('Duplicate player name: "Alice"');
+  });
+
   it('nets sum to zero across all players', () => {
     const players = [
       makePlayer('Alice', [50], [], [], 80),
