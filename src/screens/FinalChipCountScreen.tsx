@@ -20,6 +20,7 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
     useCallback(() => {
       const found = loadGames().find(g => g.id === gameId) ?? null;
       setGame(found);
+      setChipCounts({});
     }, [gameId]),
   );
 

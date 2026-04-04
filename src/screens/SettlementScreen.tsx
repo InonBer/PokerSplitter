@@ -60,6 +60,7 @@ export default function SettlementScreen({ route, navigation }: Props) {
         <View style={styles.evenContainer}>
           <Text style={styles.evenText}>No transfers needed!</Text>
           <Text style={styles.evenSub}>Everyone broke even.</Text>
+          <Text style={styles.header}>Total pot ${pot.toFixed(2)}</Text>
         </View>
       ) : (
         <FlatList
