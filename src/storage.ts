@@ -1,14 +1,18 @@
 // src/storage.ts
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 import { Game } from './types';
 
-const storage = new MMKV();
+const storage = createMMKV();
 const GAMES_KEY = 'games';
 
 export function loadGames(): Game[] {
   const raw = storage.getString(GAMES_KEY);
   if (!raw) return [];
-  return JSON.parse(raw) as Game[];
+  try {
+    return JSON.parse(raw) as Game[];
+  } catch {
+    return [];
+  }
 }
 
 function persistGames(games: Game[]): void {

@@ -10,10 +10,10 @@ import { Game } from '../src/types';
 let mockStore: Record<string, string> = {};
 
 jest.mock('react-native-mmkv', () => ({
-  MMKV: jest.fn().mockImplementation(() => ({
+  createMMKV: jest.fn().mockReturnValue({
     getString: (key: string) => mockStore[key],
     set: (key: string, value: string) => { mockStore[key] = value; },
-  })),
+  }),
 }));
 
 const makeGame = (id: string): Game => ({
