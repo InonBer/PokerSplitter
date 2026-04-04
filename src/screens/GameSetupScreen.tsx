@@ -12,18 +12,21 @@ import { v4 as uuidv4 } from 'uuid';
 type Props = StackScreenProps<RootStackParamList, 'GameSetup'>;
 
 interface PlayerEntry {
+  id: string;   // stable key for FlatList — prevents focus jumping on row removal
   name: string;
   buyIn: string; // string for TextInput; parsed on submit
 }
 
+const newEntry = (): PlayerEntry => ({ id: uuidv4(), name: '', buyIn: '' });
+
 export default function GameSetupScreen({ navigation }: Props) {
-  const [players, setPlayers] = useState<PlayerEntry[]>([{ name: '', buyIn: '' }]);
+  const [players, setPlayers] = useState<PlayerEntry[]>([newEntry(), newEntry()]);
 
   function addPlayer() {
-    setPlayers(prev => [...prev, { name: '', buyIn: '' }]);
+    setPlayers(prev => [...prev, newEntry()]);
   }
 
-  function updatePlayer(index: number, field: keyof PlayerEntry, value: string) {
+  function updatePlayer(index: number, field: keyof Omit<PlayerEntry, 'id'>, value: string) {
     setPlayers(prev => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
   }
 
@@ -83,7 +86,7 @@ export default function GameSetupScreen({ navigation }: Props) {
     >
       <FlatList
         data={players}
-        keyExtractor={(_, i) => String(i)}
+        keyExtractor={item => item.id}
         renderItem={({ item, index }) => (
           <View style={styles.playerRow}>
             <TextInput
