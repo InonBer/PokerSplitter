@@ -20,10 +20,23 @@ In-app purchases are handled via RevenueCat (`react-native-purchases`), which wr
 | File picker (restore) | `expo-document-picker` |
 | File system (export/backup) | `expo-file-system` + native share sheet |
 
-`app.json` must include:
-- The RevenueCat Expo config plugin with iOS and Android API keys
-- `expo-build-properties` for the native build
-- `LSApplicationQueriesSchemes: ["whatsapp"]` under `expo.ios` so that `Linking.canOpenURL('whatsapp://send')` returns a meaningful result on iOS
+The existing `app.json` must be renamed to `app.config.js` (Expo dynamic config) so that environment variables can be resolved at build time. `app.config.js` should export a function that spreads the original static config and adds the dynamic fields:
+
+```js
+// app.config.js
+export default ({ config }) => ({
+  ...config,
+  plugins: [
+    ...(config.plugins ?? []),
+    ["react-native-purchases", { apiKey: process.env.EXPO_PUBLIC_RC_IOS_KEY }],
+    "expo-build-properties",
+  ],
+  ios: {
+    ...config.ios,
+    infoPlist: { LSApplicationQueriesSchemes: ["whatsapp"] },
+  },
+});
+```
 
 ---
 
@@ -47,7 +60,7 @@ PaywallScreen is generic — it does not receive a navigation param indicating w
 
 **Free tier:**
 - Full game flow (setup → active game → chip count → settlement → share)
-- Up to 3 games at a time (gate check: `loadGames().length >= 3`)
+- Up to 3 games at a time (gate check: `loadGames().length >= 3`; counts all games — both `active` and `finished` — currently in storage)
 - Deleted games free up a slot
 - Game history for those games
 
@@ -79,13 +92,21 @@ interface Game {
 interface Contact {
   id: string;
   name: string;
-  phone?: string;          // E.164 format e.g. "+972501234567"
+  phone?: string;          // E.164 format e.g. "+972501234567"; validated on input
 }
 ```
 
 The `Player` interface is unchanged. Phone numbers are never persisted on players — WhatsApp contact lookup at settlement time always comes from the saved Contacts store, matched by player name.
 
 Duplicate player names within a single game are already prevented by GameSetupScreen validation (case-insensitive check before starting) and by `computeNets` which throws on duplicates. Stats aggregation and WhatsApp matching assume player names within a single game are unique.
+
+**`RootStackParamList` additions** (all `undefined` — no navigation params):
+```ts
+PaywallScreen: undefined;
+StatsScreen: undefined;
+SettingsScreen: undefined;
+ContactsScreen: undefined;
+```
 
 **MMKV storage keys:**
 - `"games"` — existing JSON array (Game gains optional `name`, backwards compatible)
@@ -133,6 +154,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ### ContactsScreen
 - List of saved contacts (name + phone if set)
 - Add / edit / delete contacts
+- Phone number field validation: must match `/^\+\d{7,15}$/` (E.164 — starts with `+`, followed by 7–15 digits). Show inline error "Enter a valid phone number (e.g. +972501234567)" if invalid. Phone field is optional — saving a contact with no phone is allowed.
 - Accessible from SettingsScreen
 - Used by GameSetupScreen contact picker
 
@@ -160,7 +182,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ### HomeScreen
 - Add "Stats" button in header (Pro gated)
 - Add "Settings" button in header
-- Show game count indicator when `!isPro && gameCount <= 3`; hidden when Pro or when `gameCount > 3` (post-restore state). Display format: `"1/3 games used"`, `"2/3 games used"`, `"3/3 games used — upgrade to add more"` (at the limit)
+- Show game count indicator when `!isPro && gameCount <= 3`; hidden when Pro or when `gameCount > 3`. When `gameCount > 3` and not Pro (e.g. after a restore), the indicator is intentionally hidden — the user encounters the paywall on the next "New Game" tap without a prior warning, which is acceptable. Display format: `"1/3 games used"`, `"2/3 games used"`, `"3/3 games used — upgrade to add more"` (at the limit)
 - Show Pro badge in header when unlocked
 
 ### GameSetupScreen
@@ -191,12 +213,21 @@ Opens WhatsApp with full settlement text pre-filled; user picks recipient/group:
 whatsapp://send?text=<encoded summary>
 ```
 
-Summary format:
+Summary format when transfers exist:
 ```
 🃏 Poker Night Results
 
 Dan → Maya: $45.00
 Tom → Alex: $20.00
+
+Total pot: $280.00
+```
+
+Summary format when zero transfers (break-even):
+```
+🃏 Poker Night Results
+
+No transfers needed — everyone broke even!
 
 Total pot: $280.00
 ```
@@ -234,7 +265,11 @@ interface PlayerStat {
 }
 ```
 
-Player identity is by `name.trim().toLowerCase()`. Sorted by `totalNet` descending. `biggestWin` displayed as `$0.00` when zero.
+Player identity is by `name.trim().toLowerCase()`. Sorted by `totalNet` descending.
+
+Display formatting in Stats table:
+- `totalNet`: shown as `+$45.00` (positive) or `-$45.00` (negative) or `$0.00` (zero)
+- `biggestWin`: shown as `$45.00` (no `+` prefix) or `$0.00` when never positive
 
 ---
 
@@ -265,6 +300,8 @@ Friday Night,2026-04-07,Maya,100.00,55.00,-45.00
 2026-04-05,2026-04-05,Alex,50.00,20.00,-30.00
 ```
 
+The `Net` column uses a `+` prefix for positive values (e.g. `+45.00`) — this must be explicitly prepended since `Number.toFixed()` does not add it automatically.
+
 Delivered via `expo-file-system` write to cache dir + native share sheet. No file system permissions required.
 
 ---
@@ -285,7 +322,7 @@ On file selected:
 - If an active game exists in current storage, show a specific warning: *"You have a game in progress. Restoring will discard it. Continue?"*
 - Otherwise show the standard confirmation: *"This will replace all current data. Continue?"*
 - On confirm: overwrite both `"games"` and `"contacts"` MMKV keys entirely. If the backup has no `contacts` array, `"contacts"` is reset to an empty array (existing contacts are not preserved — restore is a full replacement)
-- Reload app state after write
+- Reload app state after write by calling `setGames(loadGames())` (and `setContacts(loadContacts())` where applicable) in the relevant component state — the existing `useFocusEffect` pattern on HomeScreen already reloads on focus. No `expo-updates` or full JS reload is required.
 
 **Restore and the free-tier gate:** Restored games are fully loaded regardless of count. The 3-game gate (`loadGames().length >= 3`) applies only to creating new games. After restoring a backup with 10 games, a free user has all 10 in history. The game count indicator is hidden when `gameCount > 3` and user is not Pro (indicator shown only when `!isPro && gameCount <= 3`).
 
