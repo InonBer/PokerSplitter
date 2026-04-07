@@ -1,6 +1,7 @@
 // src/components/TransferRow.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Transfer } from '../types';
 
 interface Props {
@@ -8,10 +9,11 @@ interface Props {
 }
 
 export default function TransferRow({ transfer }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.row}>
       <Text style={styles.from}>{transfer.from}</Text>
-      <Text style={styles.arrow}> → </Text>
+      <Text style={styles.arrow}> {t('common.arrow')} </Text>
       <Text style={styles.to}>{transfer.to}</Text>
       <View style={styles.spacer} />
       <Text style={styles.amount}>${transfer.amount.toFixed(2)}</Text>
@@ -36,5 +38,5 @@ const styles = StyleSheet.create({
   arrow: { fontSize: 16, color: '#999' },
   to: { fontSize: 16, fontWeight: '600', color: '#2e7d32' },
   spacer: { flex: 1 },
-  amount: { fontSize: 18, fontWeight: '700', color: '#111' },
+  amount: { fontSize: 18, fontWeight: '700', color: '#111', writingDirection: 'ltr' },
 });
