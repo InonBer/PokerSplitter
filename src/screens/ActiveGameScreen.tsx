@@ -10,11 +10,13 @@ import { loadGames, updateGame } from '../storage';
 import PlayerRow from '../components/PlayerRow';
 import AmountModal from '../components/AmountModal';
 import { v4 as uuidv4 } from 'uuid';
+import { useTranslation } from 'react-i18next';
 
 type Props = StackScreenProps<RootStackParamList, 'ActiveGame'>;
 
 export default function ActiveGameScreen({ route, navigation }: Props) {
   const { gameId } = route.params;
+  const { t } = useTranslation();
   const [game, setGame] = useState<Game | null>(null);
   const [modal, setModal] = useState<{ title: string; onConfirm: (n: number) => void } | null>(null);
 
@@ -23,7 +25,7 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
       const found = loadGames().find(g => g.id === gameId) ?? null;
       setGame(found);
       if (found) {
-        navigation.setOptions({ title: `Pot: $${pot(found).toFixed(2)}` });
+        navigation.setOptions({ title: t('activeGame.pot', { amount: pot(found).toFixed(2) }) });
       }
     }, [gameId, navigation]),
   );
@@ -47,21 +49,21 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
         ),
       };
       updateGame(updated);
-      navigation.setOptions({ title: `Pot: $${pot(updated).toFixed(2)}` });
+      navigation.setOptions({ title: t('activeGame.pot', { amount: pot(updated).toFixed(2) }) });
       return updated;
     });
   }
 
   function promptAmount(title: string, onConfirm: (amount: number) => void) {
     if (Platform.OS === 'ios') {
-      Alert.prompt(title, 'Enter amount:', [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.prompt(title, t('activeGame.enterAmount'), [
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Confirm',
+          text: t('common.confirm'),
           onPress: (value?: string) => {
             const amount = parseFloat(value ?? '');
             if (isNaN(amount) || amount <= 0) {
-              Alert.alert('Enter a valid positive amount');
+              Alert.alert(t('activeGame.invalidAmount'));
               return;
             }
             onConfirm(amount);
@@ -74,18 +76,18 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
   }
 
   function handleRebuy(playerId: string) {
-    promptAmount('Rebuy', amount => addTransaction(playerId, 'rebuy', amount));
+    promptAmount(t('activeGame.rebuy'), amount => addTransaction(playerId, 'rebuy', amount));
   }
 
   function handleCashOut(playerId: string) {
-    promptAmount('Cash Out', amount => addTransaction(playerId, 'cashout', amount));
+    promptAmount(t('activeGame.cashOut'), amount => addTransaction(playerId, 'cashout', amount));
   }
 
   function handleEndGame() {
-    Alert.alert('End Game', 'Are you sure you want to end the game?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('activeGame.endGame'), t('activeGame.endGameConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'End Game',
+        text: t('activeGame.endGame'),
         style: 'destructive',
         onPress: () => navigation.navigate('FinalChipCount', { gameId }),
       },
@@ -109,7 +111,7 @@ export default function ActiveGameScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.list}
       />
       <TouchableOpacity style={styles.endBtn} onPress={handleEndGame}>
-        <Text style={styles.endBtnText}>End Game</Text>
+        <Text style={styles.endBtnText}>{t('activeGame.endGame')}</Text>
       </TouchableOpacity>
       {modal && (
         <AmountModal
