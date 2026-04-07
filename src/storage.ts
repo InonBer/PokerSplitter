@@ -69,3 +69,8 @@ export function loadIsPro(): boolean {
 export function setIsPro(value: boolean): void {
   storage.set(IS_PRO_KEY, value);
 }
+
+export function restoreBackup(games: Game[], contacts: Contact[]): void {
+  storage.set(GAMES_KEY, JSON.stringify(games));
+  storage.set(CONTACTS_KEY, JSON.stringify(contacts));
+}
