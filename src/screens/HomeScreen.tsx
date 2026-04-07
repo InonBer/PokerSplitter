@@ -1,7 +1,7 @@
 // src/screens/HomeScreen.tsx
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet, ListRenderItemInfo,
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ListRenderItemInfo, I18nManager,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -65,7 +65,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.rowTitle}>{date}</Text>
           <Text style={styles.rowMeta}>{t('home.players', { count: playerCount })} · {isActive ? t('home.active') : t('home.finished')}</Text>
         </View>
-        <Text style={[styles.chevron, isActive && styles.activeChevron]}>›</Text>
+        <Text style={[styles.chevron, isActive && styles.activeChevron]}>{I18nManager.isRTL ? '‹' : '›'}</Text>
       </TouchableOpacity>
     );
   }

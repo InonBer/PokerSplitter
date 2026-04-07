@@ -1,7 +1,7 @@
 // src/screens/SettingsScreen.tsx
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, I18nManager,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -89,6 +89,7 @@ export default function SettingsScreen({ navigation }: Props) {
   }
 
   const version = Constants.expoConfig?.version ?? '1.0.0';
+  const chevron = I18nManager.isRTL ? '‹' : '›';
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -119,26 +120,26 @@ export default function SettingsScreen({ navigation }: Props) {
         <Text style={styles.rowText}>{t('settings.language')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={{ color: '#777', marginEnd: 8 }}>{LANGUAGE_NAMES[getCurrentLanguage()]}</Text>
-          <Text style={styles.chevron}>›</Text>
+          <Text style={styles.chevron}>{chevron}</Text>
         </View>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>{t('settings.data')}</Text>
       <TouchableOpacity style={styles.row} onPress={() => { if (!requirePro(isPro, navigation)) return; navigation.navigate('Contacts'); }}>
-        <Text style={styles.rowText}>{t('settings.manageContacts')} {!isPro && '🔒'}</Text>
-        <Text style={styles.chevron}>›</Text>
+        <Text style={styles.rowText}>{t('settings.manageContacts')} {!isPro && '(Pro)'}</Text>
+        <Text style={styles.chevron}>{chevron}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.row} onPress={handleExportAll}>
-        <Text style={styles.rowText}>{t('settings.exportAll')} {!isPro && '🔒'}</Text>
-        <Text style={styles.chevron}>›</Text>
+        <Text style={styles.rowText}>{t('settings.exportAll')} {!isPro && '(Pro)'}</Text>
+        <Text style={styles.chevron}>{chevron}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.row} onPress={handleBackup}>
-        <Text style={styles.rowText}>{t('settings.backup')} {!isPro && '🔒'}</Text>
-        <Text style={styles.chevron}>›</Text>
+        <Text style={styles.rowText}>{t('settings.backup')} {!isPro && '(Pro)'}</Text>
+        <Text style={styles.chevron}>{chevron}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.row} onPress={handleRestore}>
-        <Text style={styles.rowText}>{t('settings.restore')} {!isPro && '🔒'}</Text>
-        <Text style={styles.chevron}>›</Text>
+        <Text style={styles.rowText}>{t('settings.restore')} {!isPro && '(Pro)'}</Text>
+        <Text style={styles.chevron}>{chevron}</Text>
       </TouchableOpacity>
 
       <Text style={styles.version}>{t('settings.version', { version })}</Text>

@@ -104,7 +104,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
       }}
       ListFooterComponent={
         <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
-          <Text style={styles.exportBtnText}>{t('gameDetail.exportCsv')} {!isPro && '🔒'}</Text>
+          <Text style={styles.exportBtnText}>{t('gameDetail.exportCsv')} {!isPro && '(Pro)'}</Text>
         </TouchableOpacity>
       }
     />
