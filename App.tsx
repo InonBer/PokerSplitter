@@ -1,5 +1,6 @@
 // App.tsx
 import 'react-native-get-random-values';
+import './src/i18n';
 import React from 'react';
 import { Platform, TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -18,6 +19,7 @@ import PaywallScreen from './src/screens/PaywallScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ContactsScreen from './src/screens/ContactsScreen';
+import { useTranslation } from 'react-i18next';
 
 // Configure RevenueCat at module scope — must run before any component mounts
 // so that useProStatus()'s getCustomerInfo() call on first render is valid.
@@ -32,6 +34,7 @@ if (_rcApiKey) {
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function App() {
+  const { t } = useTranslation();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -40,10 +43,10 @@ export default function App() {
           <Stack.Navigator initialRouteName="Home">
             <Stack.Screen name="Home" component={HomeScreen}
               options={({ navigation }) => ({
-                title: 'PokerSplitter',
+                title: t('nav.home'),
                 headerRight: () => (
                   <React.Fragment>
-                    <HeaderBtn label="Stats" onPress={() => navigation.navigate('Stats')} />
+                    <HeaderBtn label={t('home.stats')} onPress={() => navigation.navigate('Stats')} />
                     <HeaderBtn label="⚙" onPress={() => navigation.navigate('Settings')} />
                   </React.Fragment>
                 ),
