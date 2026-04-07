@@ -1,6 +1,7 @@
 // src/components/PlayerRow.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Player } from '../types';
 
 interface Props {
@@ -20,6 +21,7 @@ function hasCashedOut(player: Player): boolean {
 }
 
 export default function PlayerRow({ player, onRebuy, onCashOut }: Props) {
+  const { t } = useTranslation();
   const cashedOut = hasCashedOut(player);
   const inAmount = totalIn(player);
   const rebuyCount = player.transactions.filter(t => t.type === 'rebuy').length;
@@ -29,20 +31,20 @@ export default function PlayerRow({ player, onRebuy, onCashOut }: Props) {
       <View style={styles.info}>
         <Text style={styles.name}>{player.name}</Text>
         <Text style={styles.meta}>
-          In: ${inAmount.toFixed(2)}{rebuyCount > 0 ? ` · ${rebuyCount} rebuy${rebuyCount > 1 ? 's' : ''}` : ''}
+          {t('player.in', { amount: inAmount.toFixed(2) })}{rebuyCount > 0 ? ` · ${t('player.rebuy', { count: rebuyCount })}` : ''}
         </Text>
       </View>
       {cashedOut ? (
         <View style={styles.outBadge}>
-          <Text style={styles.outText}>Out</Text>
+          <Text style={styles.outText}>{t('player.out')}</Text>
         </View>
       ) : (
         <View style={styles.actions}>
           <TouchableOpacity style={styles.rebuyBtn} onPress={onRebuy}>
-            <Text style={styles.rebuyText}>Rebuy</Text>
+            <Text style={styles.rebuyText}>{t('player.rebuyBtn')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.cashOutBtn} onPress={onCashOut}>
-            <Text style={styles.cashOutText}>Cash Out</Text>
+            <Text style={styles.cashOutText}>{t('player.cashOutBtn')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -67,7 +69,7 @@ const styles = StyleSheet.create({
   rowDimmed: { opacity: 0.45 },
   info: { flex: 1 },
   name: { fontSize: 16, fontWeight: '600', color: '#111' },
-  meta: { fontSize: 13, color: '#777', marginTop: 2 },
+  meta: { fontSize: 13, color: '#777', marginTop: 2, writingDirection: 'ltr' },
   actions: { flexDirection: 'row', gap: 8 },
   rebuyBtn: {
     backgroundColor: '#e8f0fe',
