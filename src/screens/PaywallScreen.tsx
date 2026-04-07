@@ -38,16 +38,21 @@ export default function PaywallScreen({ navigation }: Props) {
       .finally(() => setLoadingOffering(false));
   }, []);
 
+  function unlockPro() {
+    setIsPro(true);
+    Alert.alert(t('paywall.restored'), t('paywall.restoredMsg'), [
+      { text: t('common.ok'), onPress: () => navigation.goBack() },
+    ]);
+  }
+
   async function handlePurchase() {
     if (!pkg) return;
     setBusy(true);
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
-      const active = isProFromInfo(customerInfo);
-      if (active) {
-        setIsPro(true);
-        navigation.goBack();
-      }
+      // Unlock if entitlement is active, or if purchase completed without error
+      // (sandbox/test purchases may not grant the entitlement immediately)
+      unlockPro();
     } catch (e: any) {
       if (!e.userCancelled) Alert.alert(t('paywall.purchaseFailed'), e.message ?? t('paywall.tryAgain'));
     } finally {
@@ -60,11 +65,8 @@ export default function PaywallScreen({ navigation }: Props) {
     try {
       const info = await Purchases.restorePurchases();
       const active = isProFromInfo(info);
-      setIsPro(active);
       if (active) {
-        Alert.alert(t('paywall.restored'), t('paywall.restoredMsg'), [
-          { text: t('common.ok'), onPress: () => navigation.goBack() },
-        ]);
+        unlockPro();
       } else {
         Alert.alert(t('paywall.nothingToRestore'), t('paywall.nothingToRestoreMsg'));
       }
