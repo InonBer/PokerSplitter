@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   visible: boolean;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function AmountModal({ visible, title, onConfirm, onCancel }: Props) {
+  const { t } = useTranslation();
   const [value, setValue] = useState('');
 
   function handleConfirm() {
@@ -34,7 +36,7 @@ export default function AmountModal({ visible, title, onConfirm, onCancel }: Pro
           <Text style={styles.title}>{title}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter amount"
+            placeholder={t('amount.placeholder')}
             keyboardType="decimal-pad"
             value={value}
             onChangeText={setValue}
@@ -42,10 +44,10 @@ export default function AmountModal({ visible, title, onConfirm, onCancel }: Pro
           />
           <View style={styles.buttons}>
             <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-              <Text style={styles.confirmText}>Confirm</Text>
+              <Text style={styles.confirmText}>{t('common.confirm')}</Text>
             </TouchableOpacity>
           </View>
         </View>
