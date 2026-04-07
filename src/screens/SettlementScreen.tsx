@@ -12,6 +12,8 @@ import { computeNets, computeTransfers } from '../settlement';
 import TransferRow from '../components/TransferRow';
 import { useProStatus } from '../hooks/useProStatus';
 import { buildSummaryURL, buildTransferURL } from '../utils/whatsapp';
+import { useTranslation } from 'react-i18next';
+import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
 
 type Props = StackScreenProps<RootStackParamList, 'Settlement'>;
 
@@ -23,6 +25,8 @@ export default function SettlementScreen({ route, navigation }: Props) {
   const [messageModalVisible, setMessageModalVisible] = useState(false);
   const [whatsappAvailable, setWhatsappAvailable] = useState<boolean | null>(null);
   const isPro = useProStatus();
+  const { t } = useTranslation();
+  useTranslatedTitle('nav.settlement');
 
   useFocusEffect(
     useCallback(() => {
@@ -53,9 +57,9 @@ export default function SettlementScreen({ route, navigation }: Props) {
 
   async function handleShare() {
     const lines = transfers.length === 0
-      ? ['No transfers needed — everyone broke even!']
-      : transfers.map(t => `${t.from} → ${t.to}: $${t.amount.toFixed(2)}`);
-    const message = `Poker Settlement\n\n${lines.join('\n')}\n\nTotal pot: $${pot.toFixed(2)}`;
+      ? [t('settlement.noTransfersShareLine')]
+      : transfers.map(tr => t('settlement.shareTransferLine', { from: tr.from, arrow: t('common.arrow'), to: tr.to, amount: tr.amount.toFixed(2) }));
+    const message = `${t('settlement.shareTitle')}\n\n${lines.join('\n')}\n\n${t('settlement.totalPot', { amount: pot.toFixed(2) })}`;
     await Share.share({ message });
   }
 
@@ -72,9 +76,9 @@ export default function SettlementScreen({ route, navigation }: Props) {
     <View style={styles.container}>
       {transfers.length === 0 ? (
         <View style={styles.evenContainer}>
-          <Text style={styles.evenText}>No transfers needed!</Text>
-          <Text style={styles.evenSub}>Everyone broke even.</Text>
-          <Text style={styles.header}>Total pot ${pot.toFixed(2)}</Text>
+          <Text style={styles.evenText}>{t('settlement.noTransfersNeeded')}</Text>
+          <Text style={styles.evenSub}>{t('settlement.everyoneBrokeEven')}</Text>
+          <Text style={styles.header}>{t('settlement.totalPot', { amount: pot.toFixed(2) })}</Text>
         </View>
       ) : (
         <FlatList
@@ -84,7 +88,7 @@ export default function SettlementScreen({ route, navigation }: Props) {
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             <Text style={styles.header}>
-              {transfers.length} transfer{transfers.length !== 1 ? 's' : ''} · Total pot ${pot.toFixed(2)}
+              {t('settlement.transferCount', { count: transfers.length, pot: pot.toFixed(2) })}
             </Text>
           }
         />
@@ -92,27 +96,27 @@ export default function SettlementScreen({ route, navigation }: Props) {
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-          <Text style={styles.shareBtnText}>Share Results</Text>
+          <Text style={styles.shareBtnText}>{t('settlement.shareResults')}</Text>
         </TouchableOpacity>
 
         {isPro && whatsappAvailable === true && (
           <>
             <TouchableOpacity style={styles.whatsappBtn} onPress={handleShareWhatsApp}>
-              <Text style={styles.whatsappBtnText}>Share to WhatsApp</Text>
+              <Text style={styles.whatsappBtnText}>{t('settlement.shareWhatsApp')}</Text>
             </TouchableOpacity>
             {transfers.length > 0 && (
               <TouchableOpacity style={styles.whatsappBtn} onPress={() => setMessageModalVisible(true)}>
-                <Text style={styles.whatsappBtnText}>Message Players</Text>
+                <Text style={styles.whatsappBtnText}>{t('settlement.messagePlayers')}</Text>
               </TouchableOpacity>
             )}
           </>
         )}
         {isPro && whatsappAvailable === false && (
-          <Text style={styles.noWhatsapp}>WhatsApp not installed</Text>
+          <Text style={styles.noWhatsapp}>{t('settlement.whatsappNotInstalled')}</Text>
         )}
 
         <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
-          <Text style={styles.doneBtnText}>Done</Text>
+          <Text style={styles.doneBtnText}>{t('common.done')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -136,6 +140,8 @@ interface ModalProps {
 }
 
 function MessagePlayersModal({ visible, transfers, phoneByName, onClose }: ModalProps) {
+  const { t } = useTranslation();
+
   async function sendMessage(phone: string, from: string, to: string, amount: number) {
     const url = buildTransferURL(phone, from, to, amount);
     await Linking.openURL(url);
@@ -145,29 +151,29 @@ function MessagePlayersModal({ visible, transfers, phoneByName, onClose }: Modal
     <Modal visible={visible} animationType="slide">
       <View style={mStyles.container}>
         <View style={mStyles.header}>
-          <Text style={mStyles.title}>Message Players</Text>
+          <Text style={mStyles.title}>{t('settlement.messagePlayers')}</Text>
           <TouchableOpacity onPress={onClose} style={mStyles.closeBtn}>
-            <Text style={mStyles.closeBtnText}>Done</Text>
+            <Text style={mStyles.closeBtnText}>{t('common.done')}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={mStyles.list}>
-          {transfers.map((t, i) => {
-            const phone = phoneByName[t.from];
+          {transfers.map((tr, i) => {
+            const phone = phoneByName[tr.from];
             return (
               <View key={i} style={mStyles.row}>
                 <Text style={mStyles.transferText}>
-                  {t.from} owes {t.to} ${t.amount.toFixed(2)}
+                  {t('settlement.owes', { from: tr.from, to: tr.to, amount: tr.amount.toFixed(2) })}
                 </Text>
                 {phone ? (
                   <TouchableOpacity
                     style={mStyles.sendBtn}
-                    onPress={() => sendMessage(phone, t.from, t.to, t.amount)}
+                    onPress={() => sendMessage(phone, tr.from, tr.to, tr.amount)}
                   >
-                    <Text style={mStyles.sendBtnText}>Send on WhatsApp</Text>
+                    <Text style={mStyles.sendBtnText}>{t('settlement.sendWhatsApp')}</Text>
                   </TouchableOpacity>
                 ) : (
                   <Text style={mStyles.hint}>
-                    Pick {t.from} from Contacts when starting a game to enable this
+                    {t('settlement.contactHint', { name: tr.from })}
                   </Text>
                 )}
               </View>
@@ -203,7 +209,7 @@ const mStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   list: { padding: 16, paddingBottom: 260 },
-  header: { fontSize: 14, color: '#555', textAlign: 'center', marginBottom: 16 },
+  header: { fontSize: 14, color: '#555', textAlign: 'center', marginBottom: 16, writingDirection: 'ltr' },
   evenContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   evenText: { fontSize: 22, fontWeight: '700', color: '#2e7d32' },
   evenSub: { fontSize: 15, color: '#777', marginTop: 8 },
