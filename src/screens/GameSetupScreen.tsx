@@ -5,22 +5,31 @@ import {
   StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
-import { RootStackParamList, Game, Player, Transaction } from '../types';
-import { saveGame } from '../storage';
+import { RootStackParamList, Game, Player, Transaction, Contact } from '../types';
+import { saveGame, loadContacts } from '../storage';
 import { v4 as uuidv4 } from 'uuid';
+import { useProStatus } from '../hooks/useProStatus';
+import { requirePro } from '../utils/proGate';
+import ContactPickerModal from '../components/ContactPickerModal';
 
 type Props = StackScreenProps<RootStackParamList, 'GameSetup'>;
 
 interface PlayerEntry {
-  id: string;   // stable key for FlatList — prevents focus jumping on row removal
+  id: string;
   name: string;
-  buyIn: string; // string for TextInput; parsed on submit
+  buyIn: string;
+  phone?: string; // from linked contact
 }
 
 const newEntry = (): PlayerEntry => ({ id: uuidv4(), name: '', buyIn: '' });
 
 export default function GameSetupScreen({ navigation }: Props) {
+  const isPro = useProStatus();
+  const [gameName, setGameName] = useState('');
   const [players, setPlayers] = useState<PlayerEntry[]>([newEntry(), newEntry()]);
+  const [pickerForIndex, setPickerForIndex] = useState<number | null>(null);
+
+  const contacts = loadContacts();
 
   function addPlayer() {
     setPlayers(prev => [...prev, newEntry()]);
@@ -34,38 +43,37 @@ export default function GameSetupScreen({ navigation }: Props) {
     setPlayers(prev => prev.filter((_, i) => i !== index));
   }
 
-  function startGame() {
-    if (players.length < 2) {
-      Alert.alert('Need at least 2 players');
-      return;
+  function handleContactPick(index: number) {
+    if (!requirePro(isPro, navigation)) return;
+    setPickerForIndex(index);
+  }
+
+  function handleContactSelected(contact: Contact) {
+    if (pickerForIndex !== null) {
+      setPlayers(prev => prev.map((p, i) =>
+        i === pickerForIndex ? { ...p, name: contact.name, phone: contact.phone } : p,
+      ));
     }
+    setPickerForIndex(null);
+  }
+
+  function startGame() {
+    if (players.length < 2) { Alert.alert('Need at least 2 players'); return; }
     for (const p of players) {
-      if (!p.name.trim()) {
-        Alert.alert('All players need a name');
-        return;
-      }
+      if (!p.name.trim()) { Alert.alert('All players need a name'); return; }
       const amount = parseFloat(p.buyIn);
       if (isNaN(amount) || amount <= 0) {
-        Alert.alert('All buy-in amounts must be positive numbers');
-        return;
+        Alert.alert('All buy-in amounts must be positive numbers'); return;
       }
     }
-
-    // Guard against duplicate names (computeNets requires unique names)
     const names = players.map(p => p.name.trim().toLowerCase());
     if (new Set(names).size !== names.length) {
-      Alert.alert('Duplicate names', 'All players must have unique names');
-      return;
+      Alert.alert('Duplicate names', 'All players must have unique names'); return;
     }
 
     const gamePlayers: Player[] = players.map(p => {
-      const buyInTx: Transaction = {
-        id: uuidv4(),
-        type: 'buyin',
-        amount: parseFloat(p.buyIn),
-        timestamp: Date.now(),
-      };
-      return { id: uuidv4(), name: p.name.trim(), transactions: [buyInTx] };
+      const buyInTx: Transaction = { id: uuidv4(), type: 'buyin', amount: parseFloat(p.buyIn), timestamp: Date.now() };
+      return { id: uuidv4(), name: p.name.trim(), transactions: [buyInTx], phone: p.phone };
     });
 
     const game: Game = {
@@ -73,6 +81,7 @@ export default function GameSetupScreen({ navigation }: Props) {
       date: Date.now(),
       status: 'active',
       players: gamePlayers,
+      name: isPro && gameName.trim() ? gameName.trim() : undefined,
     };
 
     saveGame(game);
@@ -80,13 +89,20 @@ export default function GameSetupScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <FlatList
         data={players}
         keyExtractor={item => item.id}
+        ListHeaderComponent={
+          isPro ? (
+            <TextInput
+              style={styles.gameNameInput}
+              placeholder="Game name (optional)"
+              value={gameName}
+              onChangeText={setGameName}
+            />
+          ) : null
+        }
         renderItem={({ item, index }) => (
           <View style={styles.playerRow}>
             <TextInput
@@ -102,6 +118,9 @@ export default function GameSetupScreen({ navigation }: Props) {
               keyboardType="decimal-pad"
               onChangeText={v => updatePlayer(index, 'buyIn', v)}
             />
+            <TouchableOpacity onPress={() => handleContactPick(index)} style={styles.contactBtn}>
+              <Text style={styles.contactBtnText}>👤</Text>
+            </TouchableOpacity>
             {players.length > 2 && (
               <TouchableOpacity onPress={() => removePlayer(index)} style={styles.removeBtn}>
                 <Text style={styles.removeText}>✕</Text>
@@ -119,6 +138,13 @@ export default function GameSetupScreen({ navigation }: Props) {
       <TouchableOpacity style={styles.startBtn} onPress={startGame}>
         <Text style={styles.startBtnText}>Start Game</Text>
       </TouchableOpacity>
+
+      <ContactPickerModal
+        visible={pickerForIndex !== null}
+        contacts={contacts}
+        onSelect={handleContactSelected}
+        onCancel={() => setPickerForIndex(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -126,38 +152,26 @@ export default function GameSetupScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   list: { padding: 16, paddingBottom: 100 },
-  playerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  gameNameInput: {
+    backgroundColor: '#fff', borderRadius: 8, padding: 12, fontSize: 15,
+    borderWidth: 1, borderColor: '#ddd', marginBottom: 12,
   },
+  playerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  input: { backgroundColor: '#fff', borderRadius: 8, padding: 12, fontSize: 15, borderWidth: 1, borderColor: '#ddd' },
   nameInput: { flex: 1, marginRight: 8 },
-  amountInput: { width: 90, marginRight: 8 },
+  amountInput: { width: 90, marginRight: 4 },
+  contactBtn: { padding: 8, marginRight: 4 },
+  contactBtnText: { fontSize: 18 },
   removeBtn: { padding: 8 },
   removeText: { color: '#e53935', fontSize: 16 },
   addBtn: {
-    alignItems: 'center',
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: '#1a73e8',
-    borderRadius: 10,
-    borderStyle: 'dashed',
-    marginTop: 4,
+    alignItems: 'center', padding: 14, borderWidth: 1.5, borderColor: '#1a73e8',
+    borderRadius: 10, borderStyle: 'dashed', marginTop: 4,
   },
   addBtnText: { color: '#1a73e8', fontSize: 15, fontWeight: '600' },
   startBtn: {
-    position: 'absolute',
-    bottom: 24,
-    left: 20,
-    right: 20,
-    backgroundColor: '#1a73e8',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
+    position: 'absolute', bottom: 24, left: 20, right: 20,
+    backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, alignItems: 'center',
   },
   startBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
