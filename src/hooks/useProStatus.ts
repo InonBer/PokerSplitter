@@ -1,5 +1,6 @@
 // src/hooks/useProStatus.ts
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import Purchases, { CustomerInfo } from 'react-native-purchases';
 import { loadIsPro, setIsPro } from '../storage';
 
@@ -19,6 +20,14 @@ export function isProFromInfo(info: CustomerInfo): boolean {
 export function useProStatus(): boolean {
   const [isPro, setIsProState] = useState(loadIsPro());
   const purchasedThisSession = useRef(false);
+
+  // Re-read MMKV when screen regains focus (e.g. returning from Paywall)
+  useFocusEffect(
+    useCallback(() => {
+      const cached = loadIsPro();
+      if (cached) setIsProState(true);
+    }, []),
+  );
 
   useEffect(() => {
     let mounted = true;
