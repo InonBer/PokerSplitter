@@ -6,9 +6,11 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
+import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 import { RootStackParamList, Contact } from '../types';
 import { loadContacts, saveContact, updateContact, deleteContact } from '../storage';
+import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
 
 type Props = StackScreenProps<RootStackParamList, 'Contacts'>;
 
@@ -21,6 +23,8 @@ function validatePhone(phone: string): string | null {
 }
 
 export default function ContactsScreen(_: Props) {
+  const { t } = useTranslation();
+  useTranslatedTitle('nav.contacts');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
@@ -52,12 +56,12 @@ export default function ContactsScreen(_: Props) {
 
   function handleSave() {
     if (!name.trim()) {
-      Alert.alert('Name required');
+      Alert.alert(t('contacts.nameRequired'));
       return;
     }
     const err = validatePhone(phone.trim());
     if (err) {
-      setPhoneError(err);
+      setPhoneError(t('contacts.invalidPhone'));
       return;
     }
     const contact: Contact = {
@@ -75,10 +79,10 @@ export default function ContactsScreen(_: Props) {
   }
 
   function handleDelete(id: string) {
-    Alert.alert('Delete contact', 'Remove this contact?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('contacts.deleteTitle'), t('contacts.deleteMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive',
+        text: t('common.delete'), style: 'destructive',
         onPress: () => {
           deleteContact(id);
           setContacts(loadContacts());
@@ -105,11 +109,11 @@ export default function ContactsScreen(_: Props) {
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.empty}>No contacts saved yet.</Text>
+          <Text style={styles.empty}>{t('contacts.noContacts')}</Text>
         }
       />
       <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-        <Text style={styles.addBtnText}>+ Add Contact</Text>
+        <Text style={styles.addBtnText}>{t('contacts.addContact')}</Text>
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -118,17 +122,17 @@ export default function ContactsScreen(_: Props) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{editing ? 'Edit Contact' : 'New Contact'}</Text>
+            <Text style={styles.modalTitle}>{editing ? t('contacts.editContact') : t('contacts.newContact')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Name *"
+              placeholder={t('contacts.namePlaceholder')}
               value={name}
               onChangeText={setName}
               autoFocus
             />
             <TextInput
               style={[styles.input, phoneError ? styles.inputError : null]}
-              placeholder="Phone (e.g. +972501234567)"
+              placeholder={t('contacts.phonePlaceholder')}
               value={phone}
               onChangeText={v => { setPhone(v); setPhoneError(null); }}
               keyboardType="phone-pad"
@@ -136,10 +140,10 @@ export default function ContactsScreen(_: Props) {
             {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>Save</Text>
+                <Text style={styles.saveBtnText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
