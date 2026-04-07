@@ -2,7 +2,7 @@
 import { createMMKV } from 'react-native-mmkv';
 import { Game, Contact } from './types';
 
-const storage = createMMKV();
+export const storage = createMMKV();
 
 const GAMES_KEY = 'games';
 const CONTACTS_KEY = 'contacts';
