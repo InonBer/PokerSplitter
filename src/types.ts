@@ -13,7 +13,8 @@ export interface Player {
   id: string;
   name: string;
   transactions: Transaction[];
-  finalChips?: number; // undefined until end-of-game chip count is entered
+  finalChips?: number;
+  phone?: string; // E.164 format; set when player is linked to a contact
 }
 
 export interface Transfer {
@@ -27,6 +28,13 @@ export interface Game {
   date: number; // Unix ms
   status: 'active' | 'finished';
   players: Player[];
+  name?: string; // optional game name e.g. "Friday Night"
+}
+
+export interface Contact {
+  id: string;
+  name: string;
+  phone?: string; // E.164 format e.g. "+972501234567"
 }
 
 // Navigation param types
@@ -37,4 +45,8 @@ export type RootStackParamList = {
   FinalChipCount: { gameId: string };
   Settlement: { gameId: string };
   GameDetail: { gameId: string };
+  Paywall: undefined;
+  Stats: undefined;
+  Settings: undefined;
+  Contacts: undefined;
 };
