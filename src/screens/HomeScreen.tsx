@@ -9,6 +9,8 @@ import { RootStackParamList, Game } from '../types';
 import { loadGames } from '../storage';
 import { useProStatus } from '../hooks/useProStatus';
 import { requirePro } from '../utils/proGate';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
 type Props = StackScreenProps<RootStackParamList, 'Home'>;
 
@@ -17,6 +19,7 @@ const FREE_GAME_LIMIT = 3;
 export default function HomeScreen({ navigation }: Props) {
   const [games, setGames] = useState<Game[]>([]);
   const isPro = useProStatus();
+  const { t } = useTranslation();
 
   useFocusEffect(
     useCallback(() => {
@@ -43,14 +46,14 @@ export default function HomeScreen({ navigation }: Props) {
 
   function gameCountIndicator(): string | null {
     if (isPro || games.length > FREE_GAME_LIMIT) return null;
-    if (games.length === FREE_GAME_LIMIT) return `${FREE_GAME_LIMIT}/${FREE_GAME_LIMIT} games used — upgrade to add more`;
-    return `${games.length}/${FREE_GAME_LIMIT} games used`;
+    if (games.length === FREE_GAME_LIMIT) return t('home.gamesUsedMax', { limit: FREE_GAME_LIMIT });
+    return t('home.gamesUsed', { count: games.length, limit: FREE_GAME_LIMIT });
   }
 
   const indicator = gameCountIndicator();
 
   function renderItem({ item }: ListRenderItemInfo<Game>) {
-    const date = item.name ?? new Date(item.date).toLocaleDateString();
+    const date = item.name ?? new Date(item.date).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US');
     const playerCount = item.players.length;
     const isActive = item.status === 'active';
     return (
@@ -60,7 +63,7 @@ export default function HomeScreen({ navigation }: Props) {
       >
         <View>
           <Text style={styles.rowTitle}>{date}</Text>
-          <Text style={styles.rowMeta}>{playerCount} players · {isActive ? 'Active' : 'Finished'}</Text>
+          <Text style={styles.rowMeta}>{t('home.players', { count: playerCount })} · {isActive ? t('home.active') : t('home.finished')}</Text>
         </View>
         <Text style={[styles.chevron, isActive && styles.activeChevron]}>›</Text>
       </TouchableOpacity>
@@ -75,10 +78,10 @@ export default function HomeScreen({ navigation }: Props) {
         keyExtractor={g => g.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>No games yet. Start one!</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{t('home.noGames')}</Text>}
       />
       <TouchableOpacity style={styles.fab} onPress={handleNewGame}>
-        <Text style={styles.fabText}>+ New Game</Text>
+        <Text style={styles.fabText}>{t('home.newGame')}</Text>
       </TouchableOpacity>
     </View>
   );
