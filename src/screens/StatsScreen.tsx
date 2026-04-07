@@ -6,8 +6,10 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
+import { useTranslation } from 'react-i18next';
 import { loadGames } from '../storage';
 import { computeStats, PlayerStat } from '../utils/stats';
+import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
 
 type Props = StackScreenProps<RootStackParamList, 'Stats'>;
 
@@ -18,6 +20,8 @@ function formatNet(n: number): string {
 }
 
 export default function StatsScreen(_: Props) {
+  const { t } = useTranslation();
+  useTranslatedTitle('nav.stats');
   const [stats, setStats] = useState<PlayerStat[]>([]);
 
   useFocusEffect(
@@ -29,10 +33,10 @@ export default function StatsScreen(_: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.tableHeader}>
-        <Text style={[styles.col, styles.colName]}>Player</Text>
-        <Text style={styles.col}>Games</Text>
-        <Text style={styles.col}>Total</Text>
-        <Text style={styles.col}>Best Win</Text>
+        <Text style={[styles.col, styles.colName]}>{t('stats.player')}</Text>
+        <Text style={styles.col}>{t('stats.games')}</Text>
+        <Text style={styles.col}>{t('stats.total')}</Text>
+        <Text style={styles.col}>{t('stats.bestWin')}</Text>
       </View>
       <FlatList
         data={stats}
@@ -49,7 +53,7 @@ export default function StatsScreen(_: Props) {
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.empty}>No finished games yet — stats appear after your first settled game.</Text>
+          <Text style={styles.empty}>{t('stats.empty')}</Text>
         }
       />
     </View>
@@ -68,7 +72,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderColor: '#f0f0f0',
   },
-  col: { flex: 1, fontSize: 14, color: '#333', textAlign: 'right' },
+  col: { flex: 1, fontSize: 14, color: '#333', textAlign: 'right', writingDirection: 'ltr' },
   colName: { flex: 2, textAlign: 'left', fontWeight: '600' },
   green: { color: '#2e7d32', fontWeight: '600' },
   red: { color: '#c62828', fontWeight: '600' },
