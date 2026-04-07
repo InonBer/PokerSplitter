@@ -24,11 +24,26 @@ In-app purchases are handled via RevenueCat (`react-native-purchases`), which wr
 
 ---
 
+## RevenueCat Configuration
+
+| Key | Value |
+|---|---|
+| Entitlement ID | `"pro"` |
+| Product ID | `"pokersplitter_pro_lifetime"` |
+| Offering ID | `"default"` |
+
+These identifiers must match exactly in both the RevenueCat dashboard and the app code. `useProStatus()` checks `customerInfo.entitlements.active["pro"]`.
+
+PaywallScreen is generic — it does not receive a navigation param indicating which feature triggered it. It always shows the same full feature list.
+
+---
+
 ## Free vs Pro
 
 **Free tier:**
 - Full game flow (setup → active game → chip count → settlement → share)
-- Up to 3 games at a time (counted as games currently in storage — deleted games free up the slot)
+- Up to 3 games at a time (gate check: `loadGames().length >= 3`)
+- Deleted games free up a slot
 - Game history for those games
 
 **Pro ($2.99 one-time unlock):**
@@ -63,6 +78,8 @@ interface Contact {
 }
 ```
 
+The `Player` interface is unchanged. Phone numbers are never persisted on players — WhatsApp contact lookup at settlement time always comes from the saved Contacts store, matched by player name.
+
 **MMKV storage keys:**
 - `"games"` — existing JSON array (Game gains optional `name`, backwards compatible)
 - `"contacts"` — new JSON array of Contact objects
@@ -78,10 +95,9 @@ Stats are computed on the fly from finished games. Transfers are already compute
 1. User tries to create a game when already at the 3-game limit, OR taps a locked Pro feature
 2. `PaywallScreen` is pushed onto the stack — lists Pro features, shows price
 3. User taps "Unlock Pro — $2.99" → native Apple/Google payment sheet (RevenueCat)
-4. On success: `isPro = true` written to MMKV, PaywallScreen pops, user must re-tap the feature (no auto-resume)
-5. "Restore Purchase" button available for reinstalls
-
-**No automatic action resumption.** After purchase, the user is returned to where they were and can immediately use the unlocked feature. Passing action callbacks through navigation params is not used — it adds complexity for minimal UX benefit.
+4. On success: `isPro = true` written to MMKV, PaywallScreen pops back to the previous screen
+5. User must re-tap the feature they originally wanted — there is no automatic action resumption
+6. "Restore Purchase" button available for reinstalls
 
 ### Pro status verification
 - On every app launch: call RevenueCat `getCustomerInfo()`, update `isPro` in MMKV
@@ -91,6 +107,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ### Gate enforcement
 - `useProStatus()` hook reads MMKV `isPro` value reactively
 - Any component needing Pro calls `requirePro(navigation)` before acting: if not Pro, navigates to PaywallScreen and returns early
+- `requirePro` does not pass any params to PaywallScreen
 
 ---
 
@@ -98,7 +115,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 
 ### PaywallScreen
 - Header: "Unlock PokerSplitter Pro"
-- Feature list with icons (unlimited games, contacts, WhatsApp, stats, export, backup)
+- Generic feature list with icons (unlimited games, contacts, WhatsApp, stats, export, backup)
 - "Unlock Pro — $2.99" primary button
 - "Restore Purchase" secondary button
 - Dismiss button (X) in header — pops screen
@@ -132,17 +149,17 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ### HomeScreen
 - Add "Stats" button in header (Pro gated)
 - Add "Settings" button in header
-- Show game count indicator when approaching free limit (e.g. "2/3 games used")
+- Show game count indicator when approaching free limit (e.g. "2/3 games used"); hidden when Pro
 - Show Pro badge in header when unlocked
 
 ### GameSetupScreen
-- "Game Name" field at top is only shown to Pro users (hidden entirely for free users, not shown-but-blocked)
-- "From Contacts" button per player row (Pro) — opens contact picker modal, populates name field; phone number is stored on the player entry in local component state for WhatsApp use during that session (not persisted to the Game data model)
+- "Game Name" field at top is only shown to Pro users (hidden entirely for free users)
+- "From Contacts" button per player row (Pro) — opens contact picker modal, populates the name text field for that player row; no phone number is stored anywhere in the game flow
 
 ### SettlementScreen
 - Add "WhatsApp" section below existing share button (Pro gated)
-- "Share Summary to WhatsApp" button
-- "Message Players" button — opens a modal listing one row per transfer (not per player), each with a send button
+- "Share Summary to WhatsApp" button — always shown when Pro
+- "Message Players" button — opens a modal listing one row per transfer, each with a send button; hidden entirely when there are zero transfers (break-even case)
 
 ### GameDetailScreen
 - Show game name in header if set
@@ -153,6 +170,8 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ## WhatsApp Integration
 
 Uses `whatsapp://send` deep link URL scheme. No API keys or backend.
+
+`Linking.canOpenURL('whatsapp://send')` is checked once when the WhatsApp section renders. If WhatsApp is not installed, the entire section is replaced with a single "WhatsApp not installed" note.
 
 ### Share Summary
 Opens WhatsApp with full settlement text pre-filled; user picks recipient/group:
@@ -172,12 +191,13 @@ Total pot: $280.00
 
 ### Message Players individually — one message per transfer
 
-The message list is driven by **transfers**, not players. Each transfer is one row with a "Send" button. This correctly handles the case where one player owes money to multiple creditors.
+The message list is driven by **transfers**, not players. Each transfer is one row with a "Send" button. This handles the case where one player owes money to multiple creditors — they receive one message per transfer.
 
 For each transfer `{ from, to, amount }`:
-- Look up contact for `from` (case-insensitive name match against saved contacts)
-- If contact has a phone → deep link: `whatsapp://send?phone=<phone>&text=<message>`
-- If no contact / no phone → show note: *"Add [Name] to Contacts to send this message"*
+- Look up contact for `from` by case-insensitive name match against saved contacts
+- If exactly one match with a phone → deep link: `whatsapp://send?phone=<phone>&text=<message>`
+- If multiple contacts match the name → show inline picker in that row (name + last 4 digits of phone); user selects before sending
+- If no match or no phone → row shows note: *"Add [Name] to Contacts to send this message"*, no send button
 
 Message text per transfer:
 ```
@@ -186,10 +206,6 @@ You owe [to] $[amount].
 ```
 
 User taps "Send" per row → WhatsApp opens to that chat with pre-filled message → user taps send → returns to app → taps next.
-
-**Duplicate contact name handling:** If a contact name matches multiple contacts in storage, a small inline picker is shown directly in that row (showing name + partial phone number) so the user selects which contact to use before sending.
-
-**`Linking.canOpenURL`** is checked once when the WhatsApp section renders. If WhatsApp is not installed, the entire WhatsApp section shows a single "WhatsApp not installed" message instead of buttons.
 
 ---
 
@@ -202,7 +218,7 @@ interface PlayerStat {
   name: string;           // display key; matched case-insensitively across games
   gamesPlayed: number;
   totalNet: number;       // sum of net across all games
-  biggestWin: number;     // highest single-game net (0 if never won)
+  biggestWin: number;     // highest single-game net (0 if never had a positive net)
 }
 ```
 
@@ -211,6 +227,8 @@ Player identity is by `name.trim().toLowerCase()`. Sorted by `totalNet` descendi
 ---
 
 ## Export (CSV)
+
+Games without a name use the date string as fallback (e.g. `"2026-04-07"`).
 
 ### Single game (from GameDetailScreen)
 ```
@@ -224,17 +242,16 @@ Dan,Maya,45.00
 ```
 
 ### All games (from SettingsScreen)
-Same column layout as single game, all games concatenated, separated by a blank row between games:
+Same column layout as single game, all games concatenated, separated by a blank row between games. Transfers section is omitted in the all-games export.
+
 ```
 Game,Date,Player,Total In,Cash Out / Final Chips,Net
 Friday Night,2026-04-07,Dan,100.00,145.00,+45.00
 Friday Night,2026-04-07,Maya,100.00,55.00,-45.00
 
-Saturday Game,2026-04-05,Tom,50.00,80.00,+30.00
-Saturday Game,2026-04-05,Alex,50.00,20.00,-30.00
+2026-04-05,2026-04-05,Tom,50.00,80.00,+30.00
+2026-04-05,2026-04-05,Alex,50.00,20.00,-30.00
 ```
-
-Transfers are not included in the all-games export (they are derivable and would clutter the file).
 
 Delivered via `expo-file-system` write to cache dir + native share sheet. No file system permissions required.
 
@@ -243,16 +260,19 @@ Delivered via `expo-file-system` write to cache dir + native share sheet. No fil
 ## Backup & Restore
 
 ### Backup
-Serialises `{ games, contacts }` to `pokersplitter-backup-YYYY-MM-DD.json`.
+Serialises `{ games, contacts }` to `pokersplitter-backup-YYYY-MM-DD.json`. The `isPro` flag is intentionally excluded — Pro status comes from RevenueCat, not a local file.
+
 Opens native share sheet — user saves to iCloud Drive, Google Drive, email, etc.
 
 ### Restore
 Opens `expo-document-picker` filtered to `.json`.
 On file selected:
-- Parse and validate structure (`games` array + optional `contacts` array)
+- Parse JSON; validate that it contains a `games` array (required) and optionally a `contacts` array
+- Any other top-level keys (including any `isPro` field) are silently ignored
 - Show confirmation: "This will replace all current data. Continue?"
-- On confirm: write to MMKV, reload app state
-- Restored data is fully loaded regardless of game count — the 3-game gate only applies to creating new games, not to restoring a backup. A free user who restores a backup with 10 games will have all 10 in history but cannot create a new game without Pro.
+- On confirm: write `games` and `contacts` to MMKV, reload app state
+
+**Restore and the free-tier gate:** Restored games are fully loaded regardless of count. The 3-game gate (`loadGames().length >= 3`) applies only to creating new games. After restoring a backup with 10 games, a free user has all 10 in history and sees the "Pro" unlock prompt when trying to create a new game. The game count indicator is hidden post-restore when game count exceeds 3 and user is not Pro (it is only shown to guide free users approaching the limit, not as an error state).
 
 ---
 
@@ -266,7 +286,7 @@ Stack Navigator
 ├── FinalChipCountScreen        (unchanged)
 ├── SettlementScreen            (+ WhatsApp section Pro)
 ├── GameDetailScreen            (+ export button Pro)
-├── PaywallScreen               (NEW)
+├── PaywallScreen               (NEW — no navigation params)
 ├── StatsScreen                 (NEW)
 ├── SettingsScreen              (NEW)
 └── ContactsScreen              (NEW)
@@ -279,14 +299,17 @@ Stack Navigator
 | Scenario | Handling |
 |---|---|
 | User hits 3-game limit | PaywallScreen shown on "New Game" tap |
-| User deletes a game | Frees a slot; game count decrements |
+| User deletes a game | Frees a slot; gate check re-evaluates on next "New Game" tap |
 | Pro feature tapped without Pro | PaywallScreen shown; user re-taps feature after unlock |
 | RevenueCat offline | Use cached `isPro` from MMKV |
-| WhatsApp not installed | `Linking.canOpenURL` check on render; show "WhatsApp not installed" note |
-| Contact name matches multiple contacts | Inline picker shown in that transfer row |
+| WhatsApp not installed | `Linking.canOpenURL` check on render; replace section with note |
+| Zero transfers (break-even) | "Message Players" button hidden; "Share Summary" still shown |
+| Contact name matches multiple contacts | Inline picker shown in that transfer row (name + last 4 digits) |
 | Contact name doesn't match any contact | Row shows "Add to Contacts" note; no send button |
 | Restore with invalid JSON | Show error alert, no data written |
-| Restore backup with >3 games (free user) | All games loaded; gate only applies to new game creation |
+| Restore backup with >3 games (free user) | All games loaded; gate count indicator hidden; gate applies to new game creation only |
+| Backup file contains `isPro` key | Ignored silently during restore |
+| Game has no name (unnamed) | CSV Game column shows date string as fallback |
 
 ---
 
@@ -299,3 +322,4 @@ Stack Navigator
 - Tournament / side pot support
 - In-app currency conversion
 - Auto-resuming actions after paywall (user re-taps instead)
+- Feature-specific messaging on PaywallScreen
