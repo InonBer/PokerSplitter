@@ -14,6 +14,8 @@ import * as Sharing from 'expo-sharing';
 import { useProStatus } from '../hooks/useProStatus';
 import { requirePro } from '../utils/proGate';
 import { generateSingleGameCSV } from '../utils/csvExport';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
 type Props = StackScreenProps<RootStackParamList, 'GameDetail'>;
 
@@ -22,6 +24,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
   const [game, setGame] = useState<Game | null>(null);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const isPro = useProStatus();
+  const { t } = useTranslation();
 
   useFocusEffect(
     useCallback(() => {
@@ -30,7 +33,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
       if (found) {
         const nets = computeNets(found.players);
         setTransfers(computeTransfers(nets));
-        navigation.setOptions({ title: found.name ?? new Date(found.date).toLocaleDateString() });
+        navigation.setOptions({ title: found.name ?? new Date(found.date).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US') });
       }
     }, [gameId, navigation]),
   );
@@ -48,7 +51,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
   // computeNets returns Record<playerName, net> — keyed by name, not id.
   // This matches the settlement.ts implementation in Task 5.
   const nets = computeNets(game.players);
-  const gameDate = new Date(game.date).toLocaleDateString();
+  const gameDate = new Date(game.date).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US');
 
   // Use a discriminated union so SectionList has a single item type.
   type PlayerItem = { key: string; type: 'player'; name: string; net: number };
@@ -59,7 +62,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
 
   const sections: Section[] = [
     {
-      title: `Players · ${gameDate}`,
+      title: t('gameDetail.players', { date: gameDate }),
       data: game.players.map<SectionItem>(p => ({
         key: p.id,
         type: 'player',
@@ -68,7 +71,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
       })),
     },
     {
-      title: 'Settlement',
+      title: t('gameDetail.settlement'),
       data: transfers.map<SectionItem>((t, i) => ({
         key: String(i),
         type: 'transfer',
@@ -101,7 +104,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
       }}
       ListFooterComponent={
         <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
-          <Text style={styles.exportBtnText}>Export CSV {!isPro && '🔒'}</Text>
+          <Text style={styles.exportBtnText}>{t('gameDetail.exportCsv')} {!isPro && '🔒'}</Text>
         </TouchableOpacity>
       }
     />
@@ -133,7 +136,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   playerName: { fontSize: 16, fontWeight: '600', color: '#111' },
-  net: { fontSize: 17, fontWeight: '700' },
+  net: { fontSize: 17, fontWeight: '700', writingDirection: 'ltr' },
   netPos: { color: '#2e7d32' },
   netNeg: { color: '#e53935' },
   exportBtn: {
