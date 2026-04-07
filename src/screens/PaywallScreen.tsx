@@ -7,20 +7,21 @@ import {
 import { StackScreenProps } from '@react-navigation/stack';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { RootStackParamList } from '../types';
+import { useTranslation } from 'react-i18next';
 import { setIsPro } from '../storage';
 
 type Props = StackScreenProps<RootStackParamList, 'Paywall'>;
 
-const FEATURES = [
-  'Unlimited games',
-  'Save player contacts',
-  'WhatsApp integration',
-  'All-time player stats',
-  'CSV export',
-  'Backup & restore',
-];
-
 export default function PaywallScreen({ navigation }: Props) {
+  const { t } = useTranslation();
+  const features = [
+    t('paywall.feature.unlimitedGames'),
+    t('paywall.feature.contacts'),
+    t('paywall.feature.whatsapp'),
+    t('paywall.feature.stats'),
+    t('paywall.feature.csv'),
+    t('paywall.feature.backup'),
+  ];
   const [pkg, setPkg] = useState<PurchasesPackage | null>(null);
   const [loadingOffering, setLoadingOffering] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -45,7 +46,7 @@ export default function PaywallScreen({ navigation }: Props) {
         navigation.goBack();
       }
     } catch (e: any) {
-      if (!e.userCancelled) Alert.alert('Purchase failed', e.message ?? 'Please try again.');
+      if (!e.userCancelled) Alert.alert(t('paywall.purchaseFailed'), e.message ?? t('paywall.tryAgain'));
     } finally {
       setBusy(false);
     }
@@ -58,14 +59,14 @@ export default function PaywallScreen({ navigation }: Props) {
       const active = typeof info.entitlements.active['pro'] !== 'undefined';
       setIsPro(active);
       if (active) {
-        Alert.alert('Restored!', 'Pro features are now unlocked.', [
+        Alert.alert(t('paywall.restored'), t('paywall.restoredMsg'), [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       } else {
-        Alert.alert('Nothing to restore', 'No previous Pro purchase found for this account.');
+        Alert.alert(t('paywall.nothingToRestore'), t('paywall.nothingToRestoreMsg'));
       }
     } catch (e: any) {
-      Alert.alert('Restore failed', e.message ?? 'Please try again.');
+      Alert.alert(t('paywall.restoreFailed'), e.message ?? t('paywall.tryAgain'));
     } finally {
       setBusy(false);
     }
@@ -77,10 +78,10 @@ export default function PaywallScreen({ navigation }: Props) {
         <Text style={styles.closeBtnText}>✕</Text>
       </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Unlock PokerSplitter Pro</Text>
-        <Text style={styles.subtitle}>One-time purchase · No subscription</Text>
-        {FEATURES.map(f => (
-          <View key={f} style={styles.featureRow}>
+        <Text style={styles.title}>{t('paywall.title')}</Text>
+        <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
+        {features.map((f, i) => (
+          <View key={i} style={styles.featureRow}>
             <Text style={styles.check}>✓</Text>
             <Text style={styles.featureText}>{f}</Text>
           </View>
@@ -95,11 +96,11 @@ export default function PaywallScreen({ navigation }: Props) {
               disabled={busy}
             >
               <Text style={styles.buyBtnText}>
-                {busy ? 'Processing…' : 'Unlock Pro — $2.99'}
+                {busy ? t('paywall.processing') : t('paywall.unlock')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleRestore} disabled={busy}>
-              <Text style={styles.restoreText}>Restore Purchase</Text>
+              <Text style={styles.restoreText}>{t('paywall.restore')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -116,7 +117,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '800', color: '#111', textAlign: 'center', marginBottom: 6 },
   subtitle: { fontSize: 13, color: '#999', marginBottom: 32 },
   featureRow: { flexDirection: 'row', alignSelf: 'stretch', marginBottom: 14 },
-  check: { color: '#1a73e8', fontSize: 16, fontWeight: '700', marginRight: 10 },
+  check: { color: '#1a73e8', fontSize: 16, fontWeight: '700', marginEnd: 10 },
   featureText: { fontSize: 16, color: '#333', flex: 1 },
   buyBtn: {
     marginTop: 36, backgroundColor: '#1a73e8', borderRadius: 12,
