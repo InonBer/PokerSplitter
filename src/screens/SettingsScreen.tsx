@@ -7,6 +7,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { StackScreenProps } from '@react-navigation/stack';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '../types';
 import {
   loadGames, loadContacts, restoreBackup,
@@ -15,12 +16,18 @@ import { serializeBackup, validateBackup } from '../utils/backup';
 import { generateAllGamesCSV } from '../utils/csvExport';
 import { useProStatus } from '../hooks/useProStatus';
 import { requirePro } from '../utils/proGate';
+import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
+import { changeAppLanguage, getCurrentLanguage, AppLanguage } from '../i18n/changeLanguage';
 import Constants from 'expo-constants';
 
 type Props = StackScreenProps<RootStackParamList, 'Settings'>;
 
+const LANGUAGE_NAMES: Record<AppLanguage, string> = { en: 'English', he: 'עברית' };
+
 export default function SettingsScreen({ navigation }: Props) {
   const isPro = useProStatus();
+  const { t } = useTranslation();
+  useTranslatedTitle('nav.settings');
 
   async function handleExportAll() {
     if (!requirePro(isPro, navigation)) return;
@@ -50,7 +57,7 @@ export default function SettingsScreen({ navigation }: Props) {
     try {
       raw = await FileSystem.readAsStringAsync(asset.uri);
     } catch {
-      Alert.alert('Error', 'Could not read the file.');
+      Alert.alert(t('settings.error'), t('settings.couldNotRead'));
       return;
     }
 
@@ -58,23 +65,23 @@ export default function SettingsScreen({ navigation }: Props) {
     try {
       backup = validateBackup(raw);
     } catch (e: any) {
-      Alert.alert('Invalid backup', e.message ?? 'File could not be validated.');
+      Alert.alert(t('settings.invalidBackup'), e.message ?? t('settings.couldNotRead'));
       return;
     }
 
     const games = loadGames();
     const hasActive = games.some(g => g.status === 'active');
     const msg = hasActive
-      ? 'You have a game in progress. Restoring will discard it. Continue?'
-      : 'This will replace all current data. Continue?';
+      ? t('settings.restoreActiveGame')
+      : t('settings.restoreConfirm');
 
-    Alert.alert('Restore backup', msg, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settings.restoreBackupTitle'), msg, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Restore', style: 'destructive',
+        text: t('settings.restore'), style: 'destructive',
         onPress: () => {
           restoreBackup(backup.games, backup.contacts);
-          Alert.alert('Restored', 'Data has been restored successfully.');
+          Alert.alert(t('settings.restoreSuccess'), t('settings.restoreSuccessMsg'));
           navigation.navigate('Home');
         },
       },
@@ -87,33 +94,54 @@ export default function SettingsScreen({ navigation }: Props) {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {isPro ? (
         <View style={styles.proBadge}>
-          <Text style={styles.proBadgeText}>⭐ Pro</Text>
+          <Text style={styles.proBadgeText}>{t('settings.pro')}</Text>
         </View>
       ) : (
         <TouchableOpacity style={styles.upgradeBtn} onPress={() => navigation.navigate('Paywall')}>
-          <Text style={styles.upgradeBtnText}>Unlock Pro — $2.99</Text>
+          <Text style={styles.upgradeBtnText}>{t('settings.unlock')}</Text>
         </TouchableOpacity>
       )}
 
-      <Text style={styles.sectionTitle}>Data</Text>
+      <Text style={styles.sectionTitle}>{t('settings.general')}</Text>
+      <TouchableOpacity
+        style={styles.row}
+        onPress={() => {
+          const options = (['en', 'he'] as AppLanguage[]).map(lang => ({
+            text: LANGUAGE_NAMES[lang],
+            onPress: () => changeAppLanguage(lang),
+          }));
+          Alert.alert(t('settings.language'), undefined, [
+            ...options,
+            { text: t('common.cancel'), style: 'cancel' },
+          ]);
+        }}
+      >
+        <Text style={styles.rowText}>{t('settings.language')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ color: '#777', marginEnd: 8 }}>{LANGUAGE_NAMES[getCurrentLanguage()]}</Text>
+          <Text style={styles.chevron}>›</Text>
+        </View>
+      </TouchableOpacity>
+
+      <Text style={styles.sectionTitle}>{t('settings.data')}</Text>
       <TouchableOpacity style={styles.row} onPress={() => { if (!requirePro(isPro, navigation)) return; navigation.navigate('Contacts'); }}>
-        <Text style={styles.rowText}>Manage Contacts {!isPro && '🔒'}</Text>
+        <Text style={styles.rowText}>{t('settings.manageContacts')} {!isPro && '🔒'}</Text>
         <Text style={styles.chevron}>›</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.row} onPress={handleExportAll}>
-        <Text style={styles.rowText}>Export All Games (CSV) {!isPro && '🔒'}</Text>
+        <Text style={styles.rowText}>{t('settings.exportAll')} {!isPro && '🔒'}</Text>
         <Text style={styles.chevron}>›</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.row} onPress={handleBackup}>
-        <Text style={styles.rowText}>Backup Data {!isPro && '🔒'}</Text>
+        <Text style={styles.rowText}>{t('settings.backup')} {!isPro && '🔒'}</Text>
         <Text style={styles.chevron}>›</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.row} onPress={handleRestore}>
-        <Text style={styles.rowText}>Restore Data {!isPro && '🔒'}</Text>
+        <Text style={styles.rowText}>{t('settings.restore')} {!isPro && '🔒'}</Text>
         <Text style={styles.chevron}>›</Text>
       </TouchableOpacity>
 
-      <Text style={styles.version}>PokerSplitter v{version}</Text>
+      <Text style={styles.version}>{t('settings.version', { version })}</Text>
     </ScrollView>
   );
 }
