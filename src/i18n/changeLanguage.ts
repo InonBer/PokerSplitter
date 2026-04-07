@@ -1,9 +1,7 @@
 import { Alert, I18nManager } from 'react-native';
 import { storage } from '../storage';
-import i18n from './index';
+import i18n, { USER_LANGUAGE_KEY } from './index';
 import RNRestart from 'react-native-restart';
-
-const USER_LANGUAGE_KEY = 'userLanguage';
 
 export type AppLanguage = 'en' | 'he';
 

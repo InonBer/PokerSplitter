@@ -1,15 +1,12 @@
 // src/utils/stats.ts
 import { Game } from '../types';
+import { round2 } from '../settlement';
 
 export interface PlayerStat {
   name: string;
   gamesPlayed: number;
   totalNet: number;
   biggestWin: number; // 0 if never positive
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 export function computeStats(games: Game[]): PlayerStat[] {

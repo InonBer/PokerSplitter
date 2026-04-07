@@ -15,7 +15,7 @@ import { useProStatus } from '../hooks/useProStatus';
 import { requirePro } from '../utils/proGate';
 import { generateSingleGameCSV } from '../utils/csvExport';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
+import { formatLocalDate } from '../i18n';
 
 type Props = StackScreenProps<RootStackParamList, 'GameDetail'>;
 
@@ -33,7 +33,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
       if (found) {
         const nets = computeNets(found.players);
         setTransfers(computeTransfers(nets));
-        navigation.setOptions({ title: found.name ?? new Date(found.date).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US') });
+        navigation.setOptions({ title: found.name ?? formatLocalDate(found.date) });
       }
     }, [gameId, navigation]),
   );
@@ -51,7 +51,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
   // computeNets returns Record<playerName, net> — keyed by name, not id.
   // This matches the settlement.ts implementation in Task 5.
   const nets = computeNets(game.players);
-  const gameDate = new Date(game.date).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US');
+  const gameDate = formatLocalDate(game.date);
 
   // Use a discriminated union so SectionList has a single item type.
   type PlayerItem = { key: string; type: 'player'; name: string; net: number };

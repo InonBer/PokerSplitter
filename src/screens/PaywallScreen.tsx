@@ -1,5 +1,5 @@
 // src/screens/PaywallScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert,
   ScrollView,
@@ -9,19 +9,20 @@ import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { RootStackParamList } from '../types';
 import { useTranslation } from 'react-i18next';
 import { setIsPro } from '../storage';
+import { isProFromInfo } from '../hooks/useProStatus';
 
 type Props = StackScreenProps<RootStackParamList, 'Paywall'>;
 
 export default function PaywallScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const features = [
+  const features = useMemo(() => [
     t('paywall.feature.unlimitedGames'),
     t('paywall.feature.contacts'),
     t('paywall.feature.whatsapp'),
     t('paywall.feature.stats'),
     t('paywall.feature.csv'),
     t('paywall.feature.backup'),
-  ];
+  ], [t]);
   const [pkg, setPkg] = useState<PurchasesPackage | null>(null);
   const [loadingOffering, setLoadingOffering] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -40,7 +41,7 @@ export default function PaywallScreen({ navigation }: Props) {
     setBusy(true);
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
-      const active = typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+      const active = isProFromInfo(customerInfo);
       if (active) {
         setIsPro(true);
         navigation.goBack();
@@ -56,7 +57,7 @@ export default function PaywallScreen({ navigation }: Props) {
     setBusy(true);
     try {
       const info = await Purchases.restorePurchases();
-      const active = typeof info.entitlements.active['pro'] !== 'undefined';
+      const active = isProFromInfo(info);
       setIsPro(active);
       if (active) {
         Alert.alert(t('paywall.restored'), t('paywall.restoredMsg'), [

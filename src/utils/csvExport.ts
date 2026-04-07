@@ -1,6 +1,6 @@
 // src/utils/csvExport.ts
 import { Game } from '../types';
-import { computeNets, computeTransfers } from '../settlement';
+import { computeNets, computeTransfers, round2 } from '../settlement';
 
 function formatNet(n: number): string {
   const abs = Math.abs(n).toFixed(2);
@@ -28,7 +28,7 @@ function playerRows(game: Game): string[] {
       .filter(t => t.type === 'cashout')
       .reduce((sum, t) => sum + t.amount, 0);
     const finalValue = player.finalChips ?? cashedOut;
-    const net = Math.round((finalValue - totalIn) * 100) / 100;
+    const net = round2(finalValue - totalIn);
     return `${label},${date},${player.name},${totalIn.toFixed(2)},${finalValue.toFixed(2)},${formatNet(net)}`;
   });
 }

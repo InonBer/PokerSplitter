@@ -6,7 +6,7 @@ import { storage } from '../storage';
 import en from './locales/en.json';
 import he from './locales/he.json';
 
-const USER_LANGUAGE_KEY = 'userLanguage';
+export const USER_LANGUAGE_KEY = 'userLanguage';
 
 // Resolve language: MMKV override > device locale > English fallback
 function resolveLanguage(): 'en' | 'he' {
@@ -32,5 +32,9 @@ i18n.use(initReactI18next).init({
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
 });
+
+export function formatLocalDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US');
+}
 
 export default i18n;

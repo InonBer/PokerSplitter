@@ -10,7 +10,7 @@ import { loadGames } from '../storage';
 import { useProStatus } from '../hooks/useProStatus';
 import { requirePro } from '../utils/proGate';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
+import { formatLocalDate } from '../i18n';
 
 type Props = StackScreenProps<RootStackParamList, 'Home'>;
 
@@ -53,7 +53,7 @@ export default function HomeScreen({ navigation }: Props) {
   const indicator = gameCountIndicator();
 
   function renderItem({ item }: ListRenderItemInfo<Game>) {
-    const date = item.name ?? new Date(item.date).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US');
+    const date = item.name ?? formatLocalDate(item.date);
     const playerCount = item.players.length;
     const isActive = item.status === 'active';
     return (

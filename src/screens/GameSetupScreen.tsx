@@ -1,9 +1,10 @@
 // src/screens/GameSetupScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList, Game, Player, Transaction, Contact } from '../types';
 import { saveGame, loadContacts } from '../storage';
@@ -32,8 +33,11 @@ export default function GameSetupScreen({ navigation }: Props) {
   const [gameName, setGameName] = useState('');
   const [players, setPlayers] = useState<PlayerEntry[]>([newEntry(), newEntry()]);
   const [pickerForIndex, setPickerForIndex] = useState<number | null>(null);
+  const [contacts, setContacts] = useState(loadContacts());
 
-  const contacts = loadContacts();
+  useFocusEffect(
+    useCallback(() => { setContacts(loadContacts()); }, []),
+  );
 
   function addPlayer() {
     setPlayers(prev => [...prev, newEntry()]);

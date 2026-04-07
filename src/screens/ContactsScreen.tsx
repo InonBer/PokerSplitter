@@ -16,10 +16,8 @@ type Props = StackScreenProps<RootStackParamList, 'Contacts'>;
 
 const PHONE_REGEX = /^\+\d{7,15}$/;
 
-function validatePhone(phone: string): string | null {
-  if (!phone) return null; // optional
-  if (!PHONE_REGEX.test(phone)) return 'Enter a valid phone number (e.g. +972501234567)';
-  return null;
+function isValidPhone(phone: string): boolean {
+  return !phone || PHONE_REGEX.test(phone);
 }
 
 export default function ContactsScreen(_: Props) {
@@ -59,8 +57,7 @@ export default function ContactsScreen(_: Props) {
       Alert.alert(t('contacts.nameRequired'));
       return;
     }
-    const err = validatePhone(phone.trim());
-    if (err) {
+    if (!isValidPhone(phone.trim())) {
       setPhoneError(t('contacts.invalidPhone'));
       return;
     }

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Purchases, { CustomerInfo } from 'react-native-purchases';
 import { loadIsPro, setIsPro } from '../storage';
 
-function isProFromInfo(info: CustomerInfo): boolean {
+export function isProFromInfo(info: CustomerInfo): boolean {
   return typeof info.entitlements.active['pro'] !== 'undefined';
 }
 
