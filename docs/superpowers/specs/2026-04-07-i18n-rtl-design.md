@@ -12,11 +12,14 @@ Add internationalization (English + Hebrew) with full RTL layout support to Poke
 - Manual language override persisted in MMKV
 - App restart on language change (required by React Native's I18nManager)
 
-## Dependencies
+## New Dependencies
+
+All four must be installed:
 
 - `i18next` — core translation engine (interpolation, pluralization)
 - `react-i18next` — React bindings (useTranslation hook, re-renders on language change)
 - `expo-localization` — device locale detection
+- `react-native-restart` — app restart after RTL toggle (see App Restart section)
 
 ## Architecture
 
@@ -24,13 +27,14 @@ Add internationalization (English + Hebrew) with full RTL layout support to Poke
 
 ```
 src/i18n/
-  index.ts          — i18next config, locale detection, MMKV override, RTL setup
+  index.ts            — i18next config, locale detection, MMKV override, RTL setup
+  changeLanguage.ts   — shared helper for language switch + restart flow
   locales/
-    en.json         — English translations (~80 keys)
-    he.json         — Hebrew translations (~80 keys)
+    en.json           — English translations (~85 keys)
+    he.json           — Hebrew translations (~85 keys)
 ```
 
-No new files beyond the `src/i18n/` directory. All other changes are modifications to existing screens and components.
+All other changes are modifications to existing screens, components, and `whatsapp.ts`.
 
 ### Initialization (`src/i18n/index.ts`)
 
@@ -75,7 +79,7 @@ Pluralization uses i18next's built-in `count` interpolation (e.g., `settlement.t
 | SettlementScreen | 12 | Transfer text, buttons, modal, WhatsApp labels |
 | PaywallScreen | 10 | Title, subtitle, features list, buttons, alerts |
 | StatsScreen | 5 | Column headers, empty state |
-| SettingsScreen | 8 | Section titles, row labels, version, alerts |
+| SettingsScreen | 10 | Section titles, row labels, version, alerts, language picker |
 | GameDetailScreen | ~5 | (estimated) |
 | ContactsScreen | ~4 | (estimated) |
 | PlayerRow | 4 | Status labels, button text |
@@ -83,8 +87,9 @@ Pluralization uses i18next's built-in `count` interpolation (e.g., `settlement.t
 | ContactPickerModal | ~3 | (estimated) |
 | TransferRow | ~2 | (estimated) |
 | App.tsx | 3 | Header titles, button labels |
+| whatsapp.ts | ~5 | WhatsApp message templates (see below) |
 
-**Total**: ~80 translation keys per language.
+**Total**: ~85 translation keys per language.
 
 ### Usage in Components
 
@@ -100,7 +105,24 @@ export default function HomeScreen() {
 }
 ```
 
-Navigation titles in `App.tsx` use `options` functions that call `t()`.
+### Navigation Titles in App.tsx
+
+Screen titles currently use static `options={{ title: 'New Game' }}`. Since `useTranslation()` can only be called inside a component, navigation titles must use the `options` function form. Two approaches:
+
+**Option A (recommended)**: Wrap each screen component so `t()` is available:
+```tsx
+<Stack.Screen
+  name="GameSetup"
+  component={GameSetupScreen}
+  options={{ title: t('nav.gameSetup') }}  // won't work — t not in scope
+/>
+```
+
+Instead, use a wrapper component or set the title from within each screen via `navigation.setOptions({ title: t('nav.gameSetup') })` in a `useEffect`. Several screens already use `navigation.setOptions`, so this pattern is consistent with the codebase.
+
+**Option B**: Create a small `useTranslatedTitle(key)` hook that each screen calls, encapsulating the `setOptions` call.
+
+Either approach works. Option B is cleaner if adopted consistently.
 
 ## RTL Support
 
@@ -120,19 +142,47 @@ Navigation titles in `App.tsx` use `options` functions that call `t()`.
 
 ### Style Migration
 
-Hardcoded directional styles (`marginRight`, `paddingLeft`, etc.) will be reviewed and replaced with logical properties (`marginStart`, `marginEnd`, `paddingStart`, `paddingEnd`) where they affect RTL layout.
+Hardcoded directional styles (`marginRight`, `paddingLeft`, etc.) will be reviewed and replaced with logical properties (`marginStart`, `marginEnd`, `paddingStart`, `paddingEnd`) where they affect RTL layout. For edge cases where logical properties are insufficient, `I18nManager.isRTL` can be used for conditional styling.
 
-Chevron characters (`›`) will be replaced with a direction-aware approach (either translated key or conditional rendering).
+### Arrow and Chevron Characters
+
+- Chevron characters (`›`) in HomeScreen and SettingsScreen will flip automatically with RTL layout, but should be verified during implementation.
+- The arrow (`→`) in `TransferRow.tsx` and share messages (`SettlementScreen.tsx`) represents a directional "pays" relationship (from → to). This should use `←` in RTL or be replaced with a translated key: `t('common.arrow')` that maps to `→` in English and `←` in Hebrew.
+- The same arrow in WhatsApp share messages must also be translated.
+
+### Number and Currency Direction
+
+Dollar amounts and numbers should remain LTR even in RTL mode to avoid awkward rendering (e.g., `00.150$` instead of `$150.00`). Apply `writingDirection: 'ltr'` on `Text` components that display currency/numeric values, or use Unicode LTR marks in formatted strings.
+
+**Currency localization is out of scope** — the `$` symbol stays hardcoded. This spec only covers language translation and layout direction.
+
+### Date Formatting
+
+`HomeScreen` calls `new Date(item.date).toLocaleDateString()` without a locale argument. This must pass the active i18n language to match the app's selected language:
+
+```tsx
+new Date(item.date).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US')
+```
 
 ### App Restart
 
-React Native requires a restart for `I18nManager` changes to take effect. On language change:
+React Native requires a restart for `I18nManager` changes to take effect.
 
-1. Save new language to MMKV (`userLanguage`)
-2. Change i18next language
-3. Set `I18nManager.forceRTL()`
-4. Show alert: "Language changed. App will restart."
-5. On OK, call `Updates.reloadAsync()` to restart
+**Restart mechanism**: Use `react-native-restart` (`RNRestart.restart()`). This works reliably in both development and production builds, unlike `expo-updates` `Updates.reloadAsync()` which requires `expo-updates` to be installed and only works in production/preview builds. `expo-updates` is not currently in the project.
+
+**Shared helper** (`src/i18n/changeLanguage.ts`):
+
+```tsx
+export async function changeAppLanguage(newLang: 'en' | 'he') {
+  // 1. Save to MMKV
+  // 2. Change i18next language
+  // 3. Set I18nManager.forceRTL(newLang === 'he')
+  // 4. Show alert: "Language changed. App will restart."
+  // 5. On OK, call RNRestart.restart()
+}
+```
+
+This keeps SettingsScreen clean and makes the logic reusable/testable.
 
 ## Language Picker (Settings Screen)
 
@@ -148,12 +198,24 @@ A row labeled with the translated "Language" key, showing the current language i
 
 1. User taps "Language" row
 2. Alert shows two options: "English", "עברית"
-3. If selection differs from current language:
-   - Save to MMKV (`userLanguage: 'en' | 'he'`)
-   - Change i18next language
-   - Call `I18nManager.forceRTL(newLang === 'he')`
-   - Show confirmation: "Language changed. App will restart."
-   - On OK, call `Updates.reloadAsync()`
+3. If selection differs from current language, call `changeAppLanguage(newLang)` (shared helper)
+
+## WhatsApp Messages (`src/utils/whatsapp.ts`)
+
+This file contains user-facing strings shared via WhatsApp:
+- `"Poker Night Results"` title
+- `"No transfers needed — everyone broke even!"` 
+- Transfer lines with `→` arrows
+- `"Total pot: $..."` 
+- `"Hey {name} Poker night is settled! You owe {to} $..."` 
+
+These must be translated. The `whatsapp.ts` functions will accept a `t` function parameter (or import `i18n.t` directly) to resolve translated templates. The arrow in transfer lines will use the translated `common.arrow` key.
+
+## Scope Exclusions
+
+- **Currency localization**: The `$` symbol remains hardcoded. Currency formatting is not part of this i18n pass.
+- **Lazy loading translations**: With only ~85 keys per language, both locale files are bundled. Lazy loading is unnecessary at this scale.
+- **Additional languages**: Only English and Hebrew. Adding more languages later is straightforward (add a new JSON file and update the picker).
 
 ## Decisions
 
@@ -161,6 +223,7 @@ A row labeled with the translated "Language" key, showing the current language i
 - **RTL scope**: Full layout flip (not text-only)
 - **Locale detection**: Device locale with manual override in Settings
 - **Restart on toggle**: Required by RN — alert informs user before restart
+- **Restart library**: `react-native-restart` (works in dev and prod, no `expo-updates` dependency)
 - **No new UI components**: Language picker uses native Alert, no custom modal needed
 
 ## Files Modified
@@ -169,8 +232,9 @@ A row labeled with the translated "Language" key, showing the current language i
 - All 10 screens — `useTranslation()` + string replacement
 - All 4 components — same
 - `SettingsScreen.tsx` — add language picker row + restart logic
-- `package.json` — new dependencies
+- `src/utils/whatsapp.ts` — translate WhatsApp message templates
+- `package.json` — add `i18next`, `react-i18next`, `expo-localization`, `react-native-restart`
 
 ## Files Not Modified
 
-- `types.ts`, `storage.ts`, `settlement.ts`, utility files — i18n is purely a UI concern
+- `types.ts`, `storage.ts`, `settlement.ts` — no user-facing strings
