@@ -20,7 +20,10 @@ In-app purchases are handled via RevenueCat (`react-native-purchases`), which wr
 | File picker (restore) | `expo-document-picker` |
 | File system (export/backup) | `expo-file-system` + native share sheet |
 
-`app.json` must include the RevenueCat Expo config plugin and platform-specific API keys (iOS + Android). `expo-build-properties` is required to support the native build.
+`app.json` must include:
+- The RevenueCat Expo config plugin with iOS and Android API keys
+- `expo-build-properties` for the native build
+- `LSApplicationQueriesSchemes: ["whatsapp"]` under `expo.ios` so that `Linking.canOpenURL('whatsapp://send')` returns a meaningful result on iOS
 
 ---
 
@@ -33,6 +36,8 @@ In-app purchases are handled via RevenueCat (`react-native-purchases`), which wr
 | Offering ID | `"default"` |
 
 These identifiers must match exactly in both the RevenueCat dashboard and the app code. `useProStatus()` checks `customerInfo.entitlements.active["pro"]`.
+
+**SDK initialization:** `Purchases.configure({ apiKey })` is called in `App.tsx`, before the `NavigationContainer` renders. The iOS and Android API keys are stored as Expo environment variables (`EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY`) and referenced in `app.json` via the config plugin.
 
 PaywallScreen is generic — it does not receive a navigation param indicating which feature triggered it. It always shows the same full feature list.
 
@@ -100,8 +105,9 @@ Stats are computed on the fly from finished games. Transfers are already compute
 6. "Restore Purchase" button available for reinstalls
 
 ### Pro status verification
-- On every app launch: call RevenueCat `getCustomerInfo()`, update `isPro` in MMKV
-- Local MMKV cache used for offline / between launches
+- RevenueCat SDK is initialized in `App.tsx` before navigation renders
+- On every app launch: call RevenueCat `getCustomerInfo()`, update `isPro` in MMKV to match the entitlement result — this can set `isPro` to `false` if the entitlement is no longer active (e.g. after a refund)
+- Local MMKV cache used for offline use between launches
 - RevenueCat dashboard provides revenue analytics
 
 ### Gate enforcement
@@ -130,6 +136,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 - All-time leaderboard computed from finished games
 - Columns: Player, Games, Total Won/Lost, Biggest Win
 - Players matched by name (case-insensitive, trimmed) across games — display aggregation only, no effect on WhatsApp matching
+- `biggestWin` is displayed as `$0.00` for players who have never had a positive net
 - Accessible via button on HomeScreen (Pro gate)
 - Note: name matching is best-effort; players with slightly different spellings across games appear as separate rows
 
@@ -149,7 +156,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ### HomeScreen
 - Add "Stats" button in header (Pro gated)
 - Add "Settings" button in header
-- Show game count indicator when approaching free limit (e.g. "2/3 games used"); hidden when Pro
+- Show game count indicator (e.g. "2/3 games used") when `!isPro && gameCount <= 3`; hidden when Pro or when `gameCount > 3` (post-restore state)
 - Show Pro badge in header when unlocked
 
 ### GameSetupScreen
@@ -158,7 +165,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 
 ### SettlementScreen
 - Add "WhatsApp" section below existing share button (Pro gated)
-- "Share Summary to WhatsApp" button — always shown when Pro
+- "Share Summary to WhatsApp" button — always shown when Pro (even in break-even case)
 - "Message Players" button — opens a modal listing one row per transfer, each with a send button; hidden entirely when there are zero transfers (break-even case)
 
 ### GameDetailScreen
@@ -171,7 +178,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 
 Uses `whatsapp://send` deep link URL scheme. No API keys or backend.
 
-`Linking.canOpenURL('whatsapp://send')` is checked once when the WhatsApp section renders. If WhatsApp is not installed, the entire section is replaced with a single "WhatsApp not installed" note.
+`Linking.canOpenURL('whatsapp://send')` is checked once when the WhatsApp section renders. This requires `LSApplicationQueriesSchemes: ["whatsapp"]` in `app.json` (iOS). If WhatsApp is not installed (or the scheme check fails), the entire WhatsApp section is replaced with a single "WhatsApp not installed" note.
 
 ### Share Summary
 Opens WhatsApp with full settlement text pre-filled; user picks recipient/group:
@@ -218,11 +225,11 @@ interface PlayerStat {
   name: string;           // display key; matched case-insensitively across games
   gamesPlayed: number;
   totalNet: number;       // sum of net across all games
-  biggestWin: number;     // highest single-game net (0 if never had a positive net)
+  biggestWin: number;     // highest single-game net; 0 if never positive
 }
 ```
 
-Player identity is by `name.trim().toLowerCase()`. Sorted by `totalNet` descending.
+Player identity is by `name.trim().toLowerCase()`. Sorted by `totalNet` descending. `biggestWin` displayed as `$0.00` when zero.
 
 ---
 
@@ -242,7 +249,7 @@ Dan,Maya,45.00
 ```
 
 ### All games (from SettingsScreen)
-Same column layout as single game, all games concatenated, separated by a blank row between games. Transfers section is omitted in the all-games export.
+Same player-level column layout, all games concatenated, separated by a blank row. Transfers are intentionally omitted — they are derivable from the player data and would require a second header mid-file. Users who need transfer data for a specific game should use the per-game export from GameDetailScreen.
 
 ```
 Game,Date,Player,Total In,Cash Out / Final Chips,Net
@@ -269,10 +276,12 @@ Opens `expo-document-picker` filtered to `.json`.
 On file selected:
 - Parse JSON; validate that it contains a `games` array (required) and optionally a `contacts` array
 - Any other top-level keys (including any `isPro` field) are silently ignored
-- Show confirmation: "This will replace all current data. Continue?"
-- On confirm: write `games` and `contacts` to MMKV, reload app state
+- If an active game exists in current storage, show a specific warning: *"You have a game in progress. Restoring will discard it. Continue?"*
+- Otherwise show the standard confirmation: *"This will replace all current data. Continue?"*
+- On confirm: overwrite both `"games"` and `"contacts"` MMKV keys entirely. If the backup has no `contacts` array, `"contacts"` is reset to an empty array (existing contacts are not preserved — restore is a full replacement)
+- Reload app state after write
 
-**Restore and the free-tier gate:** Restored games are fully loaded regardless of count. The 3-game gate (`loadGames().length >= 3`) applies only to creating new games. After restoring a backup with 10 games, a free user has all 10 in history and sees the "Pro" unlock prompt when trying to create a new game. The game count indicator is hidden post-restore when game count exceeds 3 and user is not Pro (it is only shown to guide free users approaching the limit, not as an error state).
+**Restore and the free-tier gate:** Restored games are fully loaded regardless of count. The 3-game gate (`loadGames().length >= 3`) applies only to creating new games. After restoring a backup with 10 games, a free user has all 10 in history. The game count indicator is hidden when `gameCount > 3` and user is not Pro (indicator shown only when `!isPro && gameCount <= 3`).
 
 ---
 
@@ -302,14 +311,18 @@ Stack Navigator
 | User deletes a game | Frees a slot; gate check re-evaluates on next "New Game" tap |
 | Pro feature tapped without Pro | PaywallScreen shown; user re-taps feature after unlock |
 | RevenueCat offline | Use cached `isPro` from MMKV |
+| Pro entitlement revoked (refund) | Next launch `getCustomerInfo()` sets `isPro = false` in MMKV |
 | WhatsApp not installed | `Linking.canOpenURL` check on render; replace section with note |
 | Zero transfers (break-even) | "Message Players" button hidden; "Share Summary" still shown |
 | Contact name matches multiple contacts | Inline picker shown in that transfer row (name + last 4 digits) |
 | Contact name doesn't match any contact | Row shows "Add to Contacts" note; no send button |
 | Restore with invalid JSON | Show error alert, no data written |
-| Restore backup with >3 games (free user) | All games loaded; gate count indicator hidden; gate applies to new game creation only |
+| Restore while active game exists | Warn specifically about in-progress game loss before confirming |
+| Restore backup with >3 games (free user) | All games loaded; gate count indicator hidden (`gameCount > 3`); gate applies to new game creation only |
+| Restore backup with no contacts array | `"contacts"` MMKV key reset to empty array |
 | Backup file contains `isPro` key | Ignored silently during restore |
 | Game has no name (unnamed) | CSV Game column shows date string as fallback |
+| Player never had positive net (biggestWin) | Displayed as `$0.00` in Stats table |
 
 ---
 
