@@ -37,7 +37,7 @@ In-app purchases are handled via RevenueCat (`react-native-purchases`), which wr
 
 These identifiers must match exactly in both the RevenueCat dashboard and the app code. `useProStatus()` checks `customerInfo.entitlements.active["pro"]`.
 
-**SDK initialization:** `Purchases.configure({ apiKey })` is called in `App.tsx`, before the `NavigationContainer` renders. The iOS and Android API keys are stored as Expo environment variables (`EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY`) and referenced in `app.json` via the config plugin.
+**SDK initialization:** `Purchases.configure({ apiKey })` is called in `App.tsx`, before the `NavigationContainer` renders. The iOS and Android API keys are stored as Expo environment variables (`EXPO_PUBLIC_RC_IOS_KEY`, `EXPO_PUBLIC_RC_ANDROID_KEY`). Because `app.json` is static and does not resolve `process.env` at build time, the project must use `app.config.js` (dynamic config) to pass the keys to the RevenueCat config plugin. `App.tsx` reads the keys directly via `process.env.EXPO_PUBLIC_RC_IOS_KEY` / `process.env.EXPO_PUBLIC_RC_ANDROID_KEY`.
 
 PaywallScreen is generic — it does not receive a navigation param indicating which feature triggered it. It always shows the same full feature list.
 
@@ -85,6 +85,8 @@ interface Contact {
 
 The `Player` interface is unchanged. Phone numbers are never persisted on players — WhatsApp contact lookup at settlement time always comes from the saved Contacts store, matched by player name.
 
+Duplicate player names within a single game are already prevented by GameSetupScreen validation (case-insensitive check before starting) and by `computeNets` which throws on duplicates. Stats aggregation and WhatsApp matching assume player names within a single game are unique.
+
 **MMKV storage keys:**
 - `"games"` — existing JSON array (Game gains optional `name`, backwards compatible)
 - `"contacts"` — new JSON array of Contact objects
@@ -107,6 +109,8 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ### Pro status verification
 - RevenueCat SDK is initialized in `App.tsx` before navigation renders
 - On every app launch: call RevenueCat `getCustomerInfo()`, update `isPro` in MMKV to match the entitlement result — this can set `isPro` to `false` if the entitlement is no longer active (e.g. after a refund)
+- If `getCustomerInfo()` throws any error (network or otherwise), fall back to the cached MMKV value — same behaviour as offline
+- Purchase callback result always wins: if a purchase completes while a launch-time `getCustomerInfo()` is still in-flight, the purchase sets `isPro = true` and the in-flight result is ignored for the current session
 - Local MMKV cache used for offline use between launches
 - RevenueCat dashboard provides revenue analytics
 
@@ -156,17 +160,18 @@ Stats are computed on the fly from finished games. Transfers are already compute
 ### HomeScreen
 - Add "Stats" button in header (Pro gated)
 - Add "Settings" button in header
-- Show game count indicator (e.g. "2/3 games used") when `!isPro && gameCount <= 3`; hidden when Pro or when `gameCount > 3` (post-restore state)
+- Show game count indicator when `!isPro && gameCount <= 3`; hidden when Pro or when `gameCount > 3` (post-restore state). Display format: `"1/3 games used"`, `"2/3 games used"`, `"3/3 games used — upgrade to add more"` (at the limit)
 - Show Pro badge in header when unlocked
 
 ### GameSetupScreen
 - "Game Name" field at top is only shown to Pro users (hidden entirely for free users)
-- "From Contacts" button per player row (Pro) — opens contact picker modal, populates the name text field for that player row; no phone number is stored anywhere in the game flow
+- "From Contacts" button per player row (Pro) — opens a full-screen contact picker modal with a search field and scrollable list of saved contacts. Empty state: "No contacts saved — add them in Settings." Tapping a contact populates the name text field for that row and dismisses the modal. No inline contact creation — only pick from existing contacts. No phone number is stored in the game flow.
 
 ### SettlementScreen
 - Add "WhatsApp" section below existing share button (Pro gated)
-- "Share Summary to WhatsApp" button — always shown when Pro (even in break-even case)
-- "Message Players" button — opens a modal listing one row per transfer, each with a send button; hidden entirely when there are zero transfers (break-even case)
+- The WhatsApp section container is always shown when Pro (it is never hidden by the transfer count)
+- "Share Summary to WhatsApp" button — always shown
+- "Message Players" button — opens a modal listing one row per transfer, each with a send button; this button is hidden when there are zero transfers (break-even case), leaving only "Share Summary" in the section
 
 ### GameDetailScreen
 - Show game name in header if set
@@ -178,7 +183,7 @@ Stats are computed on the fly from finished games. Transfers are already compute
 
 Uses `whatsapp://send` deep link URL scheme. No API keys or backend.
 
-`Linking.canOpenURL('whatsapp://send')` is checked once when the WhatsApp section renders. This requires `LSApplicationQueriesSchemes: ["whatsapp"]` in `app.json` (iOS). If WhatsApp is not installed (or the scheme check fails), the entire WhatsApp section is replaced with a single "WhatsApp not installed" note.
+`Linking.canOpenURL('whatsapp://send')` is async and is called once when the WhatsApp section mounts. This requires `LSApplicationQueriesSchemes: ["whatsapp"]` in `app.config.js` under `expo.ios` (iOS). While the check is pending, the WhatsApp section renders nothing (null). Once resolved: if WhatsApp is installed, render the buttons; if not, replace the section with a "WhatsApp not installed" note.
 
 ### Share Summary
 Opens WhatsApp with full settlement text pre-filled; user picks recipient/group:
@@ -235,7 +240,7 @@ Player identity is by `name.trim().toLowerCase()`. Sorted by `totalNet` descendi
 
 ## Export (CSV)
 
-Games without a name use the date string as fallback (e.g. `"2026-04-07"`).
+Games without a name use `"Unnamed Game"` as the fallback in the `Game` column (not the date — using the date would make the `Game` and `Date` columns identical for unnamed games, which is confusing in a spreadsheet).
 
 ### Single game (from GameDetailScreen)
 ```
@@ -275,6 +280,7 @@ Opens native share sheet — user saves to iCloud Drive, Google Drive, email, et
 Opens `expo-document-picker` filtered to `.json`.
 On file selected:
 - Parse JSON; validate that it contains a `games` array (required) and optionally a `contacts` array
+- Each object in `games` must have `id` (string), `status` (`"active"` or `"finished"`), `players` (array), and `date` (number). Any game object failing this check causes the entire restore to fail with an error alert — no partial writes
 - Any other top-level keys (including any `isPro` field) are silently ignored
 - If an active game exists in current storage, show a specific warning: *"You have a game in progress. Restoring will discard it. Continue?"*
 - Otherwise show the standard confirmation: *"This will replace all current data. Continue?"*
@@ -317,11 +323,16 @@ Stack Navigator
 | Contact name matches multiple contacts | Inline picker shown in that transfer row (name + last 4 digits) |
 | Contact name doesn't match any contact | Row shows "Add to Contacts" note; no send button |
 | Restore with invalid JSON | Show error alert, no data written |
+| Restore with valid JSON but malformed game objects | Show error alert, no data written |
+| `getCustomerInfo()` throws non-network error | Fall back to cached MMKV value |
+| Purchase completes while `getCustomerInfo()` in-flight | Purchase result wins; in-flight result ignored |
+| WhatsApp `canOpenURL` check pending | WhatsApp section renders nothing until resolved |
+| Game has no name (unnamed) | CSV `Game` column shows `"Unnamed Game"` |
 | Restore while active game exists | Warn specifically about in-progress game loss before confirming |
 | Restore backup with >3 games (free user) | All games loaded; gate count indicator hidden (`gameCount > 3`); gate applies to new game creation only |
 | Restore backup with no contacts array | `"contacts"` MMKV key reset to empty array |
 | Backup file contains `isPro` key | Ignored silently during restore |
-| Game has no name (unnamed) | CSV Game column shows date string as fallback |
+| Game has no name (unnamed) | CSV `Game` column shows `"Unnamed Game"` |
 | Player never had positive net (biggestWin) | Displayed as `$0.00` in Stats table |
 
 ---
