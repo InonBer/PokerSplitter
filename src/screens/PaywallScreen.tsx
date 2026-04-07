@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackScreenProps } from '@react-navigation/stack';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { RootStackParamList } from '../types';
@@ -15,6 +16,7 @@ type Props = StackScreenProps<RootStackParamList, 'Paywall'>;
 
 export default function PaywallScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const features = useMemo(() => [
     t('paywall.feature.unlimitedGames'),
     t('paywall.feature.contacts'),
@@ -61,7 +63,7 @@ export default function PaywallScreen({ navigation }: Props) {
       setIsPro(active);
       if (active) {
         Alert.alert(t('paywall.restored'), t('paywall.restoredMsg'), [
-          { text: 'OK', onPress: () => navigation.goBack() },
+          { text: t('common.ok'), onPress: () => navigation.goBack() },
         ]);
       } else {
         Alert.alert(t('paywall.nothingToRestore'), t('paywall.nothingToRestoreMsg'));
@@ -75,10 +77,10 @@ export default function PaywallScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={[styles.closeBtn, { top: insets.top + 8 }]} onPress={() => navigation.goBack()}>
         <Text style={styles.closeBtnText}>✕</Text>
       </TouchableOpacity>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 40 }]}>
         <Text style={styles.title}>{t('paywall.title')}</Text>
         <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
         {features.map((f, i) => (
@@ -112,9 +114,9 @@ export default function PaywallScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  closeBtn: { position: 'absolute', top: 16, right: 16, zIndex: 10, padding: 8 },
+  closeBtn: { position: 'absolute', right: 16, zIndex: 10, padding: 8 },
   closeBtnText: { fontSize: 20, color: '#666' },
-  content: { padding: 28, paddingTop: 56, alignItems: 'center' },
+  content: { padding: 28, alignItems: 'center' },
   title: { fontSize: 26, fontWeight: '800', color: '#111', textAlign: 'center', marginBottom: 6 },
   subtitle: { fontSize: 13, color: '#999', marginBottom: 32 },
   featureRow: { flexDirection: 'row', alignSelf: 'stretch', marginBottom: 14 },
