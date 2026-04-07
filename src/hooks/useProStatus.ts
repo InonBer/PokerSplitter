@@ -27,17 +27,23 @@ export function useProStatus(): boolean {
       .then(info => {
         if (!mounted || purchasedThisSession.current) return;
         const active = isProFromInfo(info);
-        setIsPro(active);
-        setIsProState(active);
+        // Only sync from RevenueCat if it grants pro.
+        // Never revoke locally — MMKV is the source of truth once unlocked.
+        if (active) {
+          setIsPro(true);
+          setIsProState(true);
+        }
       })
       .catch(() => { /* keep cached value */ });
 
     const onUpdate = (info: CustomerInfo) => {
       if (!mounted) return;
       const active = isProFromInfo(info);
-      if (active) purchasedThisSession.current = true;
-      setIsPro(active);
-      setIsProState(active);
+      if (active) {
+        purchasedThisSession.current = true;
+        setIsPro(true);
+        setIsProState(true);
+      }
     };
     Purchases.addCustomerInfoUpdateListener(onUpdate);
 
