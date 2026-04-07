@@ -4,6 +4,7 @@ import {
   Modal, View, Text, TextInput, FlatList, TouchableOpacity,
   StyleSheet, SafeAreaView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Contact } from '../types';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function ContactPickerModal({ visible, contacts, onSelect, onCancel }: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -36,14 +38,14 @@ export default function ContactPickerModal({ visible, contacts, onSelect, onCanc
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Select Contact</Text>
+          <Text style={styles.title}>{t('contactPicker.title')}</Text>
           <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
-            <Text style={styles.closeBtnText}>Cancel</Text>
+            <Text style={styles.closeBtnText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </View>
         <TextInput
           style={styles.search}
-          placeholder="Search contacts…"
+          placeholder={t('contactPicker.search')}
           value={query}
           onChangeText={setQuery}
           autoFocus
@@ -51,7 +53,7 @@ export default function ContactPickerModal({ visible, contacts, onSelect, onCanc
         />
         {contacts.length === 0 ? (
           <Text style={styles.empty}>
-            No contacts saved — add them in Settings.
+            {t('contactPicker.noContacts')}
           </Text>
         ) : (
           <FlatList
@@ -63,7 +65,7 @@ export default function ContactPickerModal({ visible, contacts, onSelect, onCanc
                 {item.phone ? <Text style={styles.phone}>{item.phone}</Text> : null}
               </TouchableOpacity>
             )}
-            ListEmptyComponent={<Text style={styles.empty}>No matches.</Text>}
+            ListEmptyComponent={<Text style={styles.empty}>{t('contactPicker.noMatches')}</Text>}
           />
         )}
       </SafeAreaView>
