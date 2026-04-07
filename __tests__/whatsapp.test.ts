@@ -1,4 +1,14 @@
 // __tests__/whatsapp.test.ts
+
+// Mock react-native-mmkv (required because whatsapp.ts → i18n → storage → MMKV)
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    getBoolean: () => undefined,
+    set: () => {},
+  }),
+}));
+
 import { buildSummaryURL, buildTransferURL } from '../src/utils/whatsapp';
 import { Transfer } from '../src/types';
 
