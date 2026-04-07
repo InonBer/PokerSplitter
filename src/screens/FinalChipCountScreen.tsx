@@ -8,10 +8,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList, Game } from '../types';
 import { loadGames, updateGame } from '../storage';
+import { useTranslation } from 'react-i18next';
+import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
 
 type Props = StackScreenProps<RootStackParamList, 'FinalChipCount'>;
 
 export default function FinalChipCountScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
+  useTranslatedTitle('nav.finalChipCount');
   const { gameId } = route.params;
   const [game, setGame] = useState<Game | null>(null);
   const [chipCounts, setChipCounts] = useState<Record<string, string>>({});
@@ -56,7 +60,7 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
     for (const p of activePlayers) {
       const val = parseFloat(chipCounts[p.id] ?? '');
       if (isNaN(val) || val < 0) {
-        Alert.alert('Enter chip counts', `Missing or invalid amount for ${p.name}`);
+        Alert.alert(t('finalChipCount.enterChipCounts'), t('finalChipCount.missingAmount', { name: p.name }));
         return;
       }
     }
@@ -66,8 +70,8 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
 
     if (entered !== expected) {
       Alert.alert(
-        'Chip count mismatch',
-        `Total entered: $${(entered / 100).toFixed(2)}\nExpected: $${(expected / 100).toFixed(2)}\n\nPlease recount and try again.`,
+        t('finalChipCount.mismatch'),
+        t('finalChipCount.mismatchMsg', { entered: (entered / 100).toFixed(2), expected: (expected / 100).toFixed(2) }),
       );
       return;
     }
@@ -97,7 +101,7 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
             <Text style={styles.name}>{item.name}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Chips $"
+              placeholder={t('finalChipCount.chipsPlaceholder')}
               keyboardType="decimal-pad"
               value={chipCounts[item.id] ?? ''}
               onChangeText={v => setChipCounts(prev => ({ ...prev, [item.id]: v }))}
@@ -107,12 +111,12 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <Text style={styles.hint}>
-            Expected total: ${expectedChips().toFixed(2)}
+            {t('finalChipCount.expectedTotal', { amount: expectedChips().toFixed(2) })}
           </Text>
         }
       />
       <TouchableOpacity style={styles.calcBtn} onPress={handleCalculate}>
-        <Text style={styles.calcBtnText}>Calculate Settlement</Text>
+        <Text style={styles.calcBtnText}>{t('finalChipCount.calculate')}</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -121,7 +125,7 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   list: { padding: 16, paddingBottom: 100 },
-  hint: { fontSize: 14, color: '#555', marginBottom: 16, textAlign: 'center' },
+  hint: { fontSize: 14, color: '#555', marginBottom: 16, textAlign: 'center', writingDirection: 'ltr' },
   row: {
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -143,6 +147,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     width: 110,
     textAlign: 'right',
+    writingDirection: 'ltr',
     borderWidth: 1,
     borderColor: '#ddd',
   },
