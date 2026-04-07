@@ -1,20 +1,23 @@
 // __tests__/storage.test.ts
 import { loadGames, saveGame, updateGame, deleteGame } from '../src/storage';
+import { loadContacts, saveContact, updateContact, deleteContact, loadIsPro, setIsPro } from '../src/storage';
 import { Game } from '../src/types';
+import { Contact } from '../src/types';
 
-// Declare mockStore outside the mock so beforeEach can reset it.
-// The arrow functions in the mock capture the `mockStore` binding (not its value),
-// so reassigning `mockStore = {}` gives every test a clean slate.
-// Jest allows variables prefixed with "mock" (case insensitive) to be referenced
-// inside jest.mock() factory functions.
-let mockStore: Record<string, string> = {};
-
-jest.mock('react-native-mmkv', () => ({
-  createMMKV: jest.fn().mockReturnValue({
-    getString: (key: string) => mockStore[key],
-    set: (key: string, value: string) => { mockStore[key] = value; },
-  }),
-}));
+jest.mock('react-native-mmkv', () => {
+  let mockStore: Record<string, string | boolean | undefined> = {};
+  return {
+    createMMKV: () => ({
+      getString: (key: string) =>
+        typeof mockStore[key] === 'string' ? (mockStore[key] as string) : undefined,
+      getBoolean: (key: string) =>
+        typeof mockStore[key] === 'boolean' ? (mockStore[key] as boolean) : undefined,
+      set: (key: string, value: string | boolean) => { mockStore[key] = value; },
+    }),
+    __setMockStore: (s: Record<string, string | boolean | undefined>) => { mockStore = s; },
+    __getMockStore: () => mockStore,
+  };
+});
 
 const makeGame = (id: string): Game => ({
   id,
@@ -24,7 +27,8 @@ const makeGame = (id: string): Game => ({
 });
 
 beforeEach(() => {
-  mockStore = {}; // fresh store before every test — prevents cross-test state bleed
+  const mmkv = require('react-native-mmkv');
+  mmkv.__setMockStore({});
 });
 
 describe('loadGames', () => {
@@ -64,5 +68,63 @@ describe('deleteGame', () => {
     saveGame(game);
     deleteGame('g4');
     expect(loadGames().find(g => g.id === 'g4')).toBeUndefined();
+  });
+});
+
+// --- Contacts ---
+
+describe('loadContacts', () => {
+  it('returns empty array when nothing stored', () => {
+    expect(loadContacts()).toEqual([]);
+  });
+});
+
+describe('saveContact', () => {
+  it('stores a contact and loadContacts returns it', () => {
+    const c: Contact = { id: 'c1', name: 'Dan' };
+    saveContact(c);
+    expect(loadContacts()).toEqual([c]);
+  });
+
+  it('ignores duplicate id', () => {
+    const c: Contact = { id: 'c1', name: 'Dan' };
+    saveContact(c);
+    saveContact(c);
+    expect(loadContacts()).toHaveLength(1);
+  });
+});
+
+describe('updateContact', () => {
+  it('replaces the contact with matching id', () => {
+    saveContact({ id: 'c1', name: 'Dan' });
+    updateContact({ id: 'c1', name: 'Danny', phone: '+1234567890' });
+    expect(loadContacts()[0].name).toBe('Danny');
+  });
+});
+
+describe('deleteContact', () => {
+  it('removes contact by id', () => {
+    saveContact({ id: 'c1', name: 'Dan' });
+    deleteContact('c1');
+    expect(loadContacts()).toEqual([]);
+  });
+});
+
+// --- isPro ---
+
+describe('loadIsPro / setIsPro', () => {
+  it('defaults to false', () => {
+    expect(loadIsPro()).toBe(false);
+  });
+
+  it('persists true', () => {
+    setIsPro(true);
+    expect(loadIsPro()).toBe(true);
+  });
+
+  it('persists false', () => {
+    setIsPro(true);
+    setIsPro(false);
+    expect(loadIsPro()).toBe(false);
   });
 });
