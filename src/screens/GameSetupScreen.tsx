@@ -11,6 +11,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { useProStatus } from '../hooks/useProStatus';
 import { requirePro } from '../utils/proGate';
 import ContactPickerModal from '../components/ContactPickerModal';
+import { useTranslation } from 'react-i18next';
+import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
 
 type Props = StackScreenProps<RootStackParamList, 'GameSetup'>;
 
@@ -24,6 +26,8 @@ interface PlayerEntry {
 const newEntry = (): PlayerEntry => ({ id: uuidv4(), name: '', buyIn: '' });
 
 export default function GameSetupScreen({ navigation }: Props) {
+  const { t } = useTranslation();
+  useTranslatedTitle('nav.gameSetup');
   const isPro = useProStatus();
   const [gameName, setGameName] = useState('');
   const [players, setPlayers] = useState<PlayerEntry[]>([newEntry(), newEntry()]);
@@ -58,17 +62,17 @@ export default function GameSetupScreen({ navigation }: Props) {
   }
 
   function startGame() {
-    if (players.length < 2) { Alert.alert('Need at least 2 players'); return; }
+    if (players.length < 2) { Alert.alert(t('setup.needPlayers')); return; }
     for (const p of players) {
-      if (!p.name.trim()) { Alert.alert('All players need a name'); return; }
+      if (!p.name.trim()) { Alert.alert(t('setup.needNames')); return; }
       const amount = parseFloat(p.buyIn);
       if (isNaN(amount) || amount <= 0) {
-        Alert.alert('All buy-in amounts must be positive numbers'); return;
+        Alert.alert(t('setup.needBuyIn')); return;
       }
     }
     const names = players.map(p => p.name.trim().toLowerCase());
     if (new Set(names).size !== names.length) {
-      Alert.alert('Duplicate names', 'All players must have unique names'); return;
+      Alert.alert(t('setup.duplicateNames'), t('setup.duplicateNamesMsg')); return;
     }
 
     const gamePlayers: Player[] = players.map(p => {
@@ -97,7 +101,7 @@ export default function GameSetupScreen({ navigation }: Props) {
           isPro ? (
             <TextInput
               style={styles.gameNameInput}
-              placeholder="Game name (optional)"
+              placeholder={t('setup.gameName')}
               value={gameName}
               onChangeText={setGameName}
             />
@@ -107,13 +111,13 @@ export default function GameSetupScreen({ navigation }: Props) {
           <View style={styles.playerRow}>
             <TextInput
               style={[styles.input, styles.nameInput]}
-              placeholder="Player name"
+              placeholder={t('setup.playerName')}
               value={item.name}
               onChangeText={v => updatePlayer(index, 'name', v)}
             />
             <TextInput
               style={[styles.input, styles.amountInput]}
-              placeholder="Buy-in $"
+              placeholder={t('setup.buyIn')}
               value={item.buyIn}
               keyboardType="decimal-pad"
               onChangeText={v => updatePlayer(index, 'buyIn', v)}
@@ -131,12 +135,12 @@ export default function GameSetupScreen({ navigation }: Props) {
         contentContainerStyle={styles.list}
         ListFooterComponent={
           <TouchableOpacity style={styles.addBtn} onPress={addPlayer}>
-            <Text style={styles.addBtnText}>+ Add Player</Text>
+            <Text style={styles.addBtnText}>{t('setup.addPlayer')}</Text>
           </TouchableOpacity>
         }
       />
       <TouchableOpacity style={styles.startBtn} onPress={startGame}>
-        <Text style={styles.startBtnText}>Start Game</Text>
+        <Text style={styles.startBtnText}>{t('setup.startGame')}</Text>
       </TouchableOpacity>
 
       <ContactPickerModal
@@ -158,9 +162,9 @@ const styles = StyleSheet.create({
   },
   playerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   input: { backgroundColor: '#fff', borderRadius: 8, padding: 12, fontSize: 15, borderWidth: 1, borderColor: '#ddd' },
-  nameInput: { flex: 1, marginRight: 8 },
-  amountInput: { width: 90, marginRight: 4 },
-  contactBtn: { padding: 8, marginRight: 4 },
+  nameInput: { flex: 1, marginEnd: 8 },
+  amountInput: { width: 90, marginEnd: 4 },
+  contactBtn: { padding: 8, marginEnd: 4 },
   contactBtnText: { fontSize: 18 },
   removeBtn: { padding: 8 },
   removeText: { color: '#e53935', fontSize: 16 },
