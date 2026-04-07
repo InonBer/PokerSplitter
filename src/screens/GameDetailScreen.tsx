@@ -1,7 +1,7 @@
 // src/screens/GameDetailScreen.tsx
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, SectionList, StyleSheet,
+  View, Text, SectionList, StyleSheet, TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -9,13 +9,19 @@ import { RootStackParamList, Game, Transfer } from '../types';
 import { loadGames } from '../storage';
 import { computeNets, computeTransfers } from '../settlement';
 import TransferRow from '../components/TransferRow';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { useProStatus } from '../hooks/useProStatus';
+import { requirePro } from '../utils/proGate';
+import { generateSingleGameCSV } from '../utils/csvExport';
 
 type Props = StackScreenProps<RootStackParamList, 'GameDetail'>;
 
-export default function GameDetailScreen({ route }: Props) {
+export default function GameDetailScreen({ route, navigation }: Props) {
   const { gameId } = route.params;
   const [game, setGame] = useState<Game | null>(null);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const isPro = useProStatus();
 
   useFocusEffect(
     useCallback(() => {
@@ -24,9 +30,18 @@ export default function GameDetailScreen({ route }: Props) {
       if (found) {
         const nets = computeNets(found.players);
         setTransfers(computeTransfers(nets));
+        navigation.setOptions({ title: found.name ?? new Date(found.date).toLocaleDateString() });
       }
-    }, [gameId]),
+    }, [gameId, navigation]),
   );
+
+  async function handleExport() {
+    if (!requirePro(isPro, navigation)) return;
+    const csv = generateSingleGameCSV(game!);
+    const path = `${FileSystem.cacheDirectory}game-${gameId}.csv`;
+    await FileSystem.writeAsStringAsync(path, csv, { encoding: FileSystem.EncodingType.UTF8 });
+    await Sharing.shareAsync(path);
+  }
 
   if (!game) return null;
 
@@ -84,6 +99,11 @@ export default function GameDetailScreen({ route }: Props) {
         }
         return <TransferRow transfer={item.transfer} />;
       }}
+      ListFooterComponent={
+        <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
+          <Text style={styles.exportBtnText}>Export CSV {!isPro && '🔒'}</Text>
+        </TouchableOpacity>
+      }
     />
   );
 }
@@ -116,4 +136,9 @@ const styles = StyleSheet.create({
   net: { fontSize: 17, fontWeight: '700' },
   netPos: { color: '#2e7d32' },
   netNeg: { color: '#e53935' },
+  exportBtn: {
+    margin: 16, backgroundColor: '#f5f5f5', borderRadius: 10,
+    padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#ddd',
+  },
+  exportBtnText: { color: '#555', fontSize: 15 },
 });
