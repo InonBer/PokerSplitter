@@ -2,7 +2,7 @@
 import 'react-native-get-random-values';
 import './src/i18n';
 import React from 'react';
-import { Platform, TouchableOpacity, Text } from 'react-native';
+import { Platform, TouchableOpacity, Text, View, I18nManager } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -42,15 +42,20 @@ export default function App() {
         <NavigationContainer>
           <Stack.Navigator initialRouteName="Home">
             <Stack.Screen name="Home" component={HomeScreen}
-              options={({ navigation }) => ({
-                title: t('nav.home'),
-                headerRight: () => (
-                  <React.Fragment>
+              options={({ navigation }) => {
+                const headerButtons = () => (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <HeaderBtn label={t('home.stats')} onPress={() => navigation.navigate('Stats')} />
-                    <HeaderBtn label="⚙" onPress={() => navigation.navigate('Settings')} />
-                  </React.Fragment>
-                ),
-              })}
+                    <HeaderBtn label={'\u2699\uFE0E'} onPress={() => navigation.navigate('Settings')} />
+                  </View>
+                );
+                return {
+                  title: t('nav.home'),
+                  ...(I18nManager.isRTL
+                    ? { headerLeft: headerButtons }
+                    : { headerRight: headerButtons }),
+                };
+              }}
             />
             <Stack.Screen name="GameSetup" component={GameSetupScreen} options={{ title: 'New Game' }} />
             <Stack.Screen name="ActiveGame" component={ActiveGameScreen} options={{ title: 'Game' }} />
