@@ -1,7 +1,8 @@
 // src/screens/SettlementScreen.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Share,
+  Linking, Alert, Modal, ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -9,6 +10,8 @@ import { RootStackParamList, Transfer } from '../types';
 import { loadGames, updateGame } from '../storage';
 import { computeNets, computeTransfers } from '../settlement';
 import TransferRow from '../components/TransferRow';
+import { useProStatus } from '../hooks/useProStatus';
+import { buildSummaryURL, buildTransferURL } from '../utils/whatsapp';
 
 type Props = StackScreenProps<RootStackParamList, 'Settlement'>;
 
@@ -16,31 +19,37 @@ export default function SettlementScreen({ route, navigation }: Props) {
   const { gameId } = route.params;
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [pot, setPot] = useState(0);
+  const [phoneByName, setPhoneByName] = useState<Record<string, string>>({});
+  const [messageModalVisible, setMessageModalVisible] = useState(false);
+  const [whatsappAvailable, setWhatsappAvailable] = useState<boolean | null>(null);
+  const isPro = useProStatus();
 
   useFocusEffect(
     useCallback(() => {
       const game = loadGames().find(g => g.id === gameId);
       if (!game) return;
-
-      // Mark as finished if not already
-      if (game.status !== 'finished') {
-        updateGame({ ...game, status: 'finished' });
-      }
-
+      if (game.status !== 'finished') updateGame({ ...game, status: 'finished' });
       const totalPot = game.players.flatMap(p => p.transactions)
         .filter(t => t.type === 'buyin' || t.type === 'rebuy')
         .reduce((sum, t) => sum + t.amount, 0);
-
       const nets = computeNets(game.players);
       const result = computeTransfers(nets);
+      // Build phone lookup from player data (set when a contact was picked)
+      const phones: Record<string, string> = {};
+      for (const p of game.players) {
+        if (p.phone) phones[p.name] = p.phone;
+      }
       setPot(totalPot);
       setTransfers(result);
-
-      // Hide back button — "Done" resets the stack to Home.
-      // FinalChipCountScreen already called updateGame() with finalChips before navigating here.
+      setPhoneByName(phones);
       navigation.setOptions({ headerLeft: () => null });
     }, [gameId, navigation]),
   );
+
+  useEffect(() => {
+    if (!isPro) return;
+    Linking.canOpenURL('whatsapp://').then(setWhatsappAvailable).catch(() => setWhatsappAvailable(false));
+  }, [isPro]);
 
   async function handleShare() {
     const lines = transfers.length === 0
@@ -48,6 +57,11 @@ export default function SettlementScreen({ route, navigation }: Props) {
       : transfers.map(t => `${t.from} → ${t.to}: $${t.amount.toFixed(2)}`);
     const message = `Poker Settlement\n\n${lines.join('\n')}\n\nTotal pot: $${pot.toFixed(2)}`;
     await Share.share({ message });
+  }
+
+  async function handleShareWhatsApp() {
+    const url = buildSummaryURL(transfers, pot);
+    await Linking.openURL(url);
   }
 
   function handleDone() {
@@ -75,44 +89,130 @@ export default function SettlementScreen({ route, navigation }: Props) {
           }
         />
       )}
+
       <View style={styles.footer}>
         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
           <Text style={styles.shareBtnText}>Share Results</Text>
         </TouchableOpacity>
+
+        {isPro && whatsappAvailable === true && (
+          <>
+            <TouchableOpacity style={styles.whatsappBtn} onPress={handleShareWhatsApp}>
+              <Text style={styles.whatsappBtnText}>Share to WhatsApp</Text>
+            </TouchableOpacity>
+            {transfers.length > 0 && (
+              <TouchableOpacity style={styles.whatsappBtn} onPress={() => setMessageModalVisible(true)}>
+                <Text style={styles.whatsappBtnText}>Message Players</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+        {isPro && whatsappAvailable === false && (
+          <Text style={styles.noWhatsapp}>WhatsApp not installed</Text>
+        )}
+
         <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
           <Text style={styles.doneBtnText}>Done</Text>
         </TouchableOpacity>
       </View>
+
+      <MessagePlayersModal
+        visible={messageModalVisible}
+        transfers={transfers}
+        phoneByName={phoneByName}
+        onClose={() => setMessageModalVisible(false)}
+      />
     </View>
   );
 }
 
+// ── Message Players Modal ────────────────────────────────────────────────────
+
+interface ModalProps {
+  visible: boolean;
+  transfers: Transfer[];
+  phoneByName: Record<string, string>; // player name → E.164 phone (from Player.phone)
+  onClose: () => void;
+}
+
+function MessagePlayersModal({ visible, transfers, phoneByName, onClose }: ModalProps) {
+  async function sendMessage(phone: string, from: string, to: string, amount: number) {
+    const url = buildTransferURL(phone, from, to, amount);
+    await Linking.openURL(url);
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide">
+      <View style={mStyles.container}>
+        <View style={mStyles.header}>
+          <Text style={mStyles.title}>Message Players</Text>
+          <TouchableOpacity onPress={onClose} style={mStyles.closeBtn}>
+            <Text style={mStyles.closeBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={mStyles.list}>
+          {transfers.map((t, i) => {
+            const phone = phoneByName[t.from];
+            return (
+              <View key={i} style={mStyles.row}>
+                <Text style={mStyles.transferText}>
+                  {t.from} owes {t.to} ${t.amount.toFixed(2)}
+                </Text>
+                {phone ? (
+                  <TouchableOpacity
+                    style={mStyles.sendBtn}
+                    onPress={() => sendMessage(phone, t.from, t.to, t.amount)}
+                  >
+                    <Text style={mStyles.sendBtnText}>Send on WhatsApp</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={mStyles.hint}>
+                    Pick {t.from} from Contacts when starting a game to enable this
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+const mStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderColor: '#eee',
+    paddingTop: 50,
+  },
+  title: { fontSize: 18, fontWeight: '700' },
+  closeBtn: { padding: 4 },
+  closeBtnText: { color: '#1a73e8', fontSize: 16 },
+  list: { padding: 16 },
+  row: {
+    backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 12,
+    elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 3,
+  },
+  transferText: { fontSize: 15, fontWeight: '600', color: '#111', marginBottom: 10 },
+  sendBtn: { backgroundColor: '#25D366', borderRadius: 8, padding: 10, alignItems: 'center', marginTop: 4 },
+  sendBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  hint: { fontSize: 13, color: '#999', fontStyle: 'italic' },
+});
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  list: { padding: 16, paddingBottom: 160 },
+  list: { padding: 16, paddingBottom: 260 },
   header: { fontSize: 14, color: '#555', textAlign: 'center', marginBottom: 16 },
   evenContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   evenText: { fontSize: 22, fontWeight: '700', color: '#2e7d32' },
   evenSub: { fontSize: 15, color: '#777', marginTop: 8 },
-  footer: {
-    position: 'absolute',
-    bottom: 24,
-    left: 20,
-    right: 20,
-    gap: 10,
-  },
-  shareBtn: {
-    backgroundColor: '#2e7d32',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
+  footer: { position: 'absolute', bottom: 24, left: 20, right: 20, gap: 10 },
+  shareBtn: { backgroundColor: '#2e7d32', borderRadius: 12, padding: 16, alignItems: 'center' },
   shareBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  doneBtn: {
-    backgroundColor: '#1a73e8',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
+  whatsappBtn: { backgroundColor: '#25D366', borderRadius: 12, padding: 14, alignItems: 'center' },
+  whatsappBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  noWhatsapp: { textAlign: 'center', color: '#999', fontSize: 13 },
+  doneBtn: { backgroundColor: '#1a73e8', borderRadius: 12, padding: 16, alignItems: 'center' },
   doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
