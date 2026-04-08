@@ -41,7 +41,7 @@ export function generateSingleGameCSV(game: Game): string {
   lines.push('Transfers');
   lines.push('From,To,Amount');
   try {
-    const nets = computeNets(game.players);
+    const nets = computeNets(game.players, game.chipMultiplier);
     const transfers = computeTransfers(nets);
     for (const t of transfers) {
       lines.push(`${t.from},${t.to},${t.amount.toFixed(2)}`);

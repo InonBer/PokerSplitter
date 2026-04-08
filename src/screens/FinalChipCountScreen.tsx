@@ -5,6 +5,7 @@ import {
   StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList, Game } from '../types';
 import { loadGames, updateGame } from '../storage';
@@ -17,6 +18,7 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   useTranslatedTitle('nav.finalChipCount');
   const { gameId } = route.params;
+  const insets = useSafeAreaInsets();
   const [game, setGame] = useState<Game | null>(null);
   const [chipCounts, setChipCounts] = useState<Record<string, string>>({});
 
@@ -46,8 +48,10 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
       .reduce((sum, t) => sum + t.amount, 0);
   }
 
+  const multiplier = game.chipMultiplier ?? 1;
+
   function expectedChips(): number {
-    return totalPot() - totalCashedOut();
+    return (totalPot() - totalCashedOut()) * multiplier;
   }
 
   function enteredTotal(): number {
@@ -108,14 +112,14 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
             />
           </View>
         )}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 100 + insets.bottom }]}
         ListHeaderComponent={
           <Text style={styles.hint}>
             {t('finalChipCount.expectedTotal', { amount: expectedChips().toFixed(2) })}
           </Text>
         }
       />
-      <TouchableOpacity style={styles.calcBtn} onPress={handleCalculate}>
+      <TouchableOpacity style={[styles.calcBtn, { bottom: 24 + insets.bottom }]} onPress={handleCalculate}>
         <Text style={styles.calcBtnText}>{t('finalChipCount.calculate')}</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
@@ -124,7 +128,7 @@ export default function FinalChipCountScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  list: { padding: 16, paddingBottom: 100 },
+  list: { padding: 16 },
   hint: { fontSize: 14, color: '#555', marginBottom: 16, textAlign: 'center', writingDirection: 'ltr' },
   row: {
     backgroundColor: '#fff',

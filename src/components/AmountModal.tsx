@@ -10,9 +10,10 @@ interface Props {
   title: string;
   onConfirm: (amount: number) => void;
   onCancel: () => void;
+  chipMultiplier?: number;
 }
 
-export default function AmountModal({ visible, title, onConfirm, onCancel }: Props) {
+export default function AmountModal({ visible, title, onConfirm, onCancel, chipMultiplier }: Props) {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
 
@@ -42,6 +43,11 @@ export default function AmountModal({ visible, title, onConfirm, onCancel }: Pro
             onChangeText={setValue}
             autoFocus
           />
+          {chipMultiplier && parseFloat(value) > 0 ? (
+            <Text style={styles.chipsPreview}>
+              {t('amount.chipsPreview', { chips: Math.round(parseFloat(value) * chipMultiplier) })}
+            </Text>
+          ) : null}
           <View style={styles.buttons}>
             <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
               <Text style={styles.cancelText}>{t('common.cancel')}</Text>
@@ -78,6 +84,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
   },
+  chipsPreview: { fontSize: 14, color: '#1a73e8', fontWeight: '600', marginBottom: 12, marginTop: -8 },
   buttons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
   cancelBtn: { padding: 10 },
   cancelText: { color: '#777', fontSize: 15 },

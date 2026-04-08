@@ -5,7 +5,7 @@ import { Player, Transfer } from './types';
  *  Keyed by player name (not id) — matches how transfers reference players.
  *  Throws if two players share the same name (would silently drop one debt).
  */
-export function computeNets(players: Player[]): Record<string, number> {
+export function computeNets(players: Player[], chipMultiplier: number = 1): Record<string, number> {
   const seen = new Set<string>();
   for (const p of players) {
     if (seen.has(p.name)) throw new Error(`Duplicate player name: "${p.name}"`);
@@ -23,7 +23,7 @@ export function computeNets(players: Player[]): Record<string, number> {
       .filter(t => t.type === 'cashout')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const finalValue = player.finalChips ?? cashedOutAmount;
+    const finalValue = player.finalChips != null ? player.finalChips / chipMultiplier : cashedOutAmount;
     nets[player.name] = round2(finalValue - totalIn);
   }
 

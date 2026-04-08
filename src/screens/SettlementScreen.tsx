@@ -14,6 +14,7 @@ import { useProStatus } from '../hooks/useProStatus';
 import { buildSummaryURL, buildTransferURL } from '../utils/whatsapp';
 import { useTranslation } from 'react-i18next';
 import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = StackScreenProps<RootStackParamList, 'Settlement'>;
 
@@ -26,6 +27,7 @@ export default function SettlementScreen({ route, navigation }: Props) {
   const [whatsappAvailable, setWhatsappAvailable] = useState<boolean | null>(null);
   const isPro = useProStatus();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   useTranslatedTitle('nav.settlement');
 
   useFocusEffect(
@@ -36,7 +38,7 @@ export default function SettlementScreen({ route, navigation }: Props) {
       const totalPot = game.players.flatMap(p => p.transactions)
         .filter(t => t.type === 'buyin' || t.type === 'rebuy')
         .reduce((sum, t) => sum + t.amount, 0);
-      const nets = computeNets(game.players);
+      const nets = computeNets(game.players, game.chipMultiplier);
       const result = computeTransfers(nets);
       // Build phone lookup from player data (set when a contact was picked)
       const phones: Record<string, string> = {};
@@ -85,7 +87,7 @@ export default function SettlementScreen({ route, navigation }: Props) {
           data={transfers}
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item }) => <TransferRow transfer={item} />}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: 260 + insets.bottom }]}
           ListHeaderComponent={
             <Text style={styles.header}>
               {t('settlement.transferCount', { count: transfers.length, pot: pot.toFixed(2) })}
@@ -94,7 +96,7 @@ export default function SettlementScreen({ route, navigation }: Props) {
         />
       )}
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { bottom: 24 + insets.bottom }]}>
         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
           <Text style={styles.shareBtnText}>{t('settlement.shareResults')}</Text>
         </TouchableOpacity>
@@ -208,7 +210,7 @@ const mStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  list: { padding: 16, paddingBottom: 260 },
+  list: { padding: 16 },
   header: { fontSize: 14, color: '#555', textAlign: 'center', marginBottom: 16, writingDirection: 'ltr' },
   evenContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   evenText: { fontSize: 22, fontWeight: '700', color: '#2e7d32' },

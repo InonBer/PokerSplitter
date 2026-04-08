@@ -27,7 +27,8 @@ export function computeStats(games: Game[]): PlayerStat[] {
         .filter(t => t.type === 'cashout')
         .reduce((sum, t) => sum + t.amount, 0);
 
-      const finalValue = player.finalChips ?? cashedOut;
+      const multiplier = game.chipMultiplier ?? 1;
+      const finalValue = player.finalChips != null ? player.finalChips / multiplier : cashedOut;
       const net = round2(finalValue - totalIn);
 
       const existing = map.get(key);

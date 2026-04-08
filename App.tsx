@@ -2,7 +2,7 @@
 import 'react-native-get-random-values';
 import './src/i18n';
 import React from 'react';
-import { Platform, TouchableOpacity, Text, View, I18nManager } from 'react-native';
+import { Platform, TouchableOpacity, Text, I18nManager } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -42,20 +42,15 @@ export default function App() {
         <NavigationContainer>
           <Stack.Navigator initialRouteName="Home">
             <Stack.Screen name="Home" component={HomeScreen}
-              options={({ navigation }) => {
-                const headerButtons = () => (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <HeaderBtn label={t('home.stats')} onPress={() => navigation.navigate('Stats')} />
-                    <HeaderBtn label={'\u2699\uFE0E'} onPress={() => navigation.navigate('Settings')} />
-                  </View>
-                );
-                return {
-                  title: t('nav.home'),
-                  ...(I18nManager.isRTL
-                    ? { headerLeft: headerButtons }
-                    : { headerRight: headerButtons }),
-                };
-              }}
+              options={({ navigation }) => ({
+                title: t('nav.home'),
+                headerLeft: () => (
+                  <HeaderBtn label={I18nManager.isRTL ? '\u2699\uFE0E' : t('home.stats')} onPress={() => navigation.navigate(I18nManager.isRTL ? 'Settings' : 'Stats')} size={I18nManager.isRTL ? 22 : undefined} />
+                ),
+                headerRight: () => (
+                  <HeaderBtn label={I18nManager.isRTL ? t('home.stats') : '\u2699\uFE0E'} onPress={() => navigation.navigate(I18nManager.isRTL ? 'Stats' : 'Settings')} size={I18nManager.isRTL ? undefined : 22} />
+                ),
+              })}
             />
             <Stack.Screen name="GameSetup" component={GameSetupScreen} options={{ title: 'New Game' }} />
             <Stack.Screen name="ActiveGame" component={ActiveGameScreen} options={{ title: 'Game' }} />
@@ -73,10 +68,10 @@ export default function App() {
   );
 }
 
-function HeaderBtn({ label, onPress }: { label: string; onPress: () => void }) {
+function HeaderBtn({ label, onPress, size }: { label: string; onPress: () => void; size?: number }) {
   return (
     <TouchableOpacity onPress={onPress} style={{ paddingHorizontal: 10 }}>
-      <Text style={{ color: '#1a73e8', fontSize: 15 }}>{label}</Text>
+      <Text style={{ color: '#1a73e8', fontSize: size ?? 15 }}>{label}</Text>
     </TouchableOpacity>
   );
 }

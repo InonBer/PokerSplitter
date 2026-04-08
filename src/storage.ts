@@ -70,6 +70,36 @@ export function setIsPro(value: boolean): void {
   storage.set(IS_PRO_KEY, value);
 }
 
+// ── Game TTL ────────────────────────────────────────────────────────────────
+
+const GAME_TTL_KEY = 'gameTtlDays';
+
+export function loadGameTtl(): number | null {
+  const val = storage.getNumber(GAME_TTL_KEY);
+  return val != null && val > 0 ? val : null;
+}
+
+export function setGameTtl(days: number | null): void {
+  if (days == null) {
+    storage.delete(GAME_TTL_KEY);
+  } else {
+    storage.set(GAME_TTL_KEY, days);
+  }
+}
+
+export function purgeExpiredGames(): void {
+  const ttl = loadGameTtl();
+  if (!ttl) return;
+  const cutoff = Date.now() - ttl * 24 * 60 * 60 * 1000;
+  const games = loadGames();
+  const kept = games.filter(g => g.status === 'active' || g.date > cutoff);
+  if (kept.length < games.length) persistGames(kept);
+}
+
+export function clearAllGames(): void {
+  storage.delete(GAMES_KEY);
+}
+
 export function restoreBackup(games: Game[], contacts: Contact[]): void {
   storage.set(GAMES_KEY, JSON.stringify(games));
   storage.set(CONTACTS_KEY, JSON.stringify(contacts));

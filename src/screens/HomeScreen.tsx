@@ -4,6 +4,7 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ListRenderItemInfo, I18nManager,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList, Game } from '../types';
 import { loadGames } from '../storage';
@@ -20,6 +21,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [games, setGames] = useState<Game[]>([]);
   const isPro = useProStatus();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -77,10 +79,10 @@ export default function HomeScreen({ navigation }: Props) {
         data={games}
         keyExtractor={g => g.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 80 + insets.bottom }]}
         ListEmptyComponent={<Text style={styles.empty}>{t('home.noGames')}</Text>}
       />
-      <TouchableOpacity style={styles.fab} onPress={handleNewGame}>
+      <TouchableOpacity style={[styles.fab, { bottom: 24 + insets.bottom }]} onPress={handleNewGame}>
         <Text style={styles.fabText}>{t('home.newGame')}</Text>
       </TouchableOpacity>
     </View>
@@ -93,7 +95,7 @@ const styles = StyleSheet.create({
     textAlign: 'center', fontSize: 12, color: '#e65100',
     paddingVertical: 8, backgroundColor: '#fff3e0',
   },
-  list: { padding: 16, paddingBottom: 80 },
+  list: { padding: 16 },
   row: {
     backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 10,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

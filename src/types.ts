@@ -29,6 +29,7 @@ export interface Game {
   status: 'active' | 'finished';
   players: Player[];
   name?: string; // optional game name e.g. "Friday Night"
+  chipMultiplier?: number; // e.g. 10 means 1 unit of money = 10 chips
 }
 
 export interface Contact {

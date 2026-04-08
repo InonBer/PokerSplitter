@@ -5,6 +5,7 @@ import {
   StyleSheet, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList, Game, Player, Transaction, Contact } from '../types';
 import { saveGame, loadContacts } from '../storage';
@@ -30,14 +31,37 @@ export default function GameSetupScreen({ navigation }: Props) {
   const { t } = useTranslation();
   useTranslatedTitle('nav.gameSetup');
   const isPro = useProStatus();
+  const insets = useSafeAreaInsets();
   const [gameName, setGameName] = useState('');
+  const [chipMultiplier, setChipMultiplier] = useState('');
+  const [customMoney, setCustomMoney] = useState('');
+  const [customChips, setCustomChips] = useState('');
   const [players, setPlayers] = useState<PlayerEntry[]>([newEntry(), newEntry()]);
   const [pickerForIndex, setPickerForIndex] = useState<number | null>(null);
   const [contacts, setContacts] = useState(loadContacts());
 
+  const hasMultiplier = chipMultiplier.trim().length > 0;
+  const hasCustom = customMoney.trim().length > 0 || customChips.trim().length > 0;
+
   useFocusEffect(
     useCallback(() => { setContacts(loadContacts()); }, []),
   );
+
+  function getChipMultiplier(): number | undefined {
+    if (hasMultiplier) {
+      const v = parseFloat(chipMultiplier);
+      return !isNaN(v) && v > 0 ? v : undefined;
+    }
+    if (hasCustom) {
+      const money = parseFloat(customMoney);
+      const chips = parseFloat(customChips);
+      if (!isNaN(money) && !isNaN(chips) && money > 0 && chips > 0) {
+        const ratio = chips / money;
+        return ratio > 0 ? ratio : undefined;
+      }
+    }
+    return undefined;
+  }
 
   function addPlayer() {
     setPlayers(prev => [...prev, newEntry()]);
@@ -90,6 +114,7 @@ export default function GameSetupScreen({ navigation }: Props) {
       status: 'active',
       players: gamePlayers,
       name: isPro && gameName.trim() ? gameName.trim() : undefined,
+      chipMultiplier: getChipMultiplier(),
     };
 
     saveGame(game);
@@ -102,32 +127,68 @@ export default function GameSetupScreen({ navigation }: Props) {
         data={players}
         keyExtractor={item => item.id}
         ListHeaderComponent={
-          isPro ? (
+          <>
+            {isPro && (
+              <TextInput
+                style={styles.gameNameInput}
+                placeholder={t('setup.gameName')}
+                placeholderTextColor="#999"
+                value={gameName}
+                onChangeText={setGameName}
+              />
+            )}
             <TextInput
-              style={styles.gameNameInput}
-              placeholder={t('setup.gameName')}
-              value={gameName}
-              onChangeText={setGameName}
+              style={[styles.gameNameInput, hasCustom && styles.inputDisabled]}
+              placeholder={t('setup.chipMultiplier')}
+              placeholderTextColor="#999"
+              value={chipMultiplier}
+              onChangeText={v => { setChipMultiplier(v); setCustomMoney(''); setCustomChips(''); }}
+              keyboardType="decimal-pad"
+              editable={!hasCustom}
             />
-          ) : null
+            <Text style={styles.orText}>{t('setup.customOr')}</Text>
+            <View style={styles.customRow}>
+              <TextInput
+                style={[styles.input, styles.customInput, hasMultiplier && styles.inputDisabled]}
+                placeholder={t('setup.customMoney')}
+                placeholderTextColor="#999"
+                value={customMoney}
+                onChangeText={v => { setCustomMoney(v); setChipMultiplier(''); }}
+                keyboardType="decimal-pad"
+                editable={!hasMultiplier}
+              />
+              <Text style={styles.equalsText}>=</Text>
+              <TextInput
+                style={[styles.input, styles.customInput, hasMultiplier && styles.inputDisabled]}
+                placeholder={t('setup.customChips')}
+                placeholderTextColor="#999"
+                value={customChips}
+                onChangeText={v => { setCustomChips(v); setChipMultiplier(''); }}
+                keyboardType="decimal-pad"
+                editable={!hasMultiplier}
+              />
+            </View>
+          </>
         }
         renderItem={({ item, index }) => (
           <View style={styles.playerRow}>
             <TextInput
               style={[styles.input, styles.nameInput]}
               placeholder={t('setup.playerName')}
+              placeholderTextColor="#999"
               value={item.name}
               onChangeText={v => updatePlayer(index, 'name', v)}
             />
             <TextInput
               style={[styles.input, styles.amountInput]}
               placeholder={t('setup.buyIn')}
+              placeholderTextColor="#999"
               value={item.buyIn}
               keyboardType="decimal-pad"
               onChangeText={v => updatePlayer(index, 'buyIn', v)}
             />
             <TouchableOpacity onPress={() => handleContactPick(index)} style={styles.contactBtn}>
-              <Text style={styles.contactBtnText}>👤</Text>
+              <Text style={styles.contactBtnText}>{'\u{1F464}'}</Text>
             </TouchableOpacity>
             {players.length > 2 && (
               <TouchableOpacity onPress={() => removePlayer(index)} style={styles.removeBtn}>
@@ -136,14 +197,14 @@ export default function GameSetupScreen({ navigation }: Props) {
             )}
           </View>
         )}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 100 + insets.bottom }]}
         ListFooterComponent={
           <TouchableOpacity style={styles.addBtn} onPress={addPlayer}>
             <Text style={styles.addBtnText}>{t('setup.addPlayer')}</Text>
           </TouchableOpacity>
         }
       />
-      <TouchableOpacity style={styles.startBtn} onPress={startGame}>
+      <TouchableOpacity style={[styles.startBtn, { bottom: 24 + insets.bottom }]} onPress={startGame}>
         <Text style={styles.startBtnText}>{t('setup.startGame')}</Text>
       </TouchableOpacity>
 
@@ -159,11 +220,16 @@ export default function GameSetupScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  list: { padding: 16, paddingBottom: 100 },
+  list: { padding: 16 },
   gameNameInput: {
     backgroundColor: '#fff', borderRadius: 8, padding: 12, fontSize: 15,
     borderWidth: 1, borderColor: '#ddd', marginBottom: 12,
   },
+  inputDisabled: { opacity: 0.4 },
+  orText: { textAlign: 'center', color: '#999', fontSize: 13, marginBottom: 8 },
+  customRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+  customInput: { flex: 1 },
+  equalsText: { fontSize: 16, color: '#777', fontWeight: '600' },
   playerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   input: { backgroundColor: '#fff', borderRadius: 8, padding: 12, fontSize: 15, borderWidth: 1, borderColor: '#ddd' },
   nameInput: { flex: 1, marginEnd: 8 },

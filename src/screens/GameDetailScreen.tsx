@@ -31,7 +31,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
       const found = loadGames().find(g => g.id === gameId) ?? null;
       setGame(found);
       if (found) {
-        const nets = computeNets(found.players);
+        const nets = computeNets(found.players, found.chipMultiplier);
         setTransfers(computeTransfers(nets));
         navigation.setOptions({ title: found.name ?? formatLocalDate(found.date) });
       }
@@ -50,7 +50,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
 
   // computeNets returns Record<playerName, net> — keyed by name, not id.
   // This matches the settlement.ts implementation in Task 5.
-  const nets = computeNets(game.players);
+  const nets = computeNets(game.players, game.chipMultiplier);
   const gameDate = formatLocalDate(game.date);
 
   // Use a discriminated union so SectionList has a single item type.
@@ -95,7 +95,7 @@ export default function GameDetailScreen({ route, navigation }: Props) {
             <View style={styles.playerRow}>
               <Text style={styles.playerName}>{item.name}</Text>
               <Text style={[styles.net, isWinner ? styles.netPos : styles.netNeg]}>
-                {isWinner ? '+' : ''}${item.net.toFixed(2)}
+                {isWinner ? '+' : ''}{item.net.toFixed(2)}
               </Text>
             </View>
           );

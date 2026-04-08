@@ -16,7 +16,7 @@ export default function TransferRow({ transfer }: Props) {
       <Text style={styles.arrow}> {t('common.arrow')} </Text>
       <Text style={styles.to}>{transfer.to}</Text>
       <View style={styles.spacer} />
-      <Text style={styles.amount}>${transfer.amount.toFixed(2)}</Text>
+      <Text style={styles.amount}>{transfer.amount.toFixed(2)}</Text>
     </View>
   );
 }

@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { RootStackParamList, Contact } from '../types';
 import { loadContacts, saveContact, updateContact, deleteContact } from '../storage';
 import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = StackScreenProps<RootStackParamList, 'Contacts'>;
 
@@ -23,6 +24,7 @@ function isValidPhone(phone: string): boolean {
 export default function ContactsScreen(_: Props) {
   const { t } = useTranslation();
   useTranslatedTitle('nav.contacts');
+  const insets = useSafeAreaInsets();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
@@ -104,12 +106,12 @@ export default function ContactsScreen(_: Props) {
             </TouchableOpacity>
           </TouchableOpacity>
         )}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 90 + insets.bottom }]}
         ListEmptyComponent={
           <Text style={styles.empty}>{t('contacts.noContacts')}</Text>
         }
       />
-      <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
+      <TouchableOpacity style={[styles.addBtn, { bottom: 24 + insets.bottom }]} onPress={openAdd}>
         <Text style={styles.addBtnText}>{t('contacts.addContact')}</Text>
       </TouchableOpacity>
 
@@ -152,7 +154,7 @@ export default function ContactsScreen(_: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  list: { padding: 16, paddingBottom: 90 },
+  list: { padding: 16 },
   row: {
     backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 10,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

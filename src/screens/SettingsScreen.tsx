@@ -10,7 +10,7 @@ import { StackScreenProps } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '../types';
 import {
-  loadGames, loadContacts, restoreBackup,
+  loadGames, loadContacts, restoreBackup, clearAllGames,
 } from '../storage';
 import { serializeBackup, validateBackup } from '../utils/backup';
 import { generateAllGamesCSV } from '../utils/csvExport';
@@ -88,6 +88,20 @@ export default function SettingsScreen({ navigation }: Props) {
     ]);
   }
 
+  function handleDeleteHistory() {
+    if (!requirePro(isPro, navigation)) return;
+    Alert.alert(t('settings.deleteHistory'), t('settings.deleteHistoryConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'), style: 'destructive',
+        onPress: () => {
+          clearAllGames();
+          Alert.alert(t('settings.deleteHistorySuccess'));
+        },
+      },
+    ]);
+  }
+
   const version = Constants.expoConfig?.version ?? '1.0.0';
   const chevron = I18nManager.isRTL ? '‹' : '›';
 
@@ -141,6 +155,9 @@ export default function SettingsScreen({ navigation }: Props) {
         <Text style={styles.rowText}>{t('settings.restore')} {!isPro && '(Pro)'}</Text>
         <Text style={styles.chevron}>{chevron}</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.row} onPress={handleDeleteHistory}>
+        <Text style={[styles.rowText, styles.destructiveText]}>{t('settings.deleteHistory')} {!isPro && '(Pro)'}</Text>
+      </TouchableOpacity>
 
       <Text style={styles.version}>{t('settings.version', { version })}</Text>
     </ScrollView>
@@ -167,6 +184,7 @@ const styles = StyleSheet.create({
     elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 3,
   },
   rowText: { fontSize: 15, color: '#111' },
+  destructiveText: { color: '#e53935' },
   chevron: { fontSize: 20, color: '#ccc' },
   version: { textAlign: 'center', color: '#bbb', fontSize: 12, marginTop: 32 },
 });

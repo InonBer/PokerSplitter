@@ -14,9 +14,9 @@ import { useTranslatedTitle } from '../hooks/useTranslatedTitle';
 type Props = StackScreenProps<RootStackParamList, 'Stats'>;
 
 function formatNet(n: number): string {
-  if (n > 0) return `+$${n.toFixed(2)}`;
-  if (n < 0) return `-$${Math.abs(n).toFixed(2)}`;
-  return '$0.00';
+  if (n > 0) return `+${n.toFixed(2)}`;
+  if (n < 0) return `-${Math.abs(n).toFixed(2)}`;
+  return '0.00';
 }
 
 export default function StatsScreen(_: Props) {
@@ -48,7 +48,7 @@ export default function StatsScreen(_: Props) {
             <Text style={[styles.col, item.totalNet >= 0 ? styles.green : styles.red]}>
               {formatNet(item.totalNet)}
             </Text>
-            <Text style={styles.col}>${item.biggestWin.toFixed(2)}</Text>
+            <Text style={styles.col}>{item.biggestWin.toFixed(2)}</Text>
           </View>
         )}
         contentContainerStyle={styles.list}
