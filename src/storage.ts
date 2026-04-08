@@ -81,7 +81,7 @@ export function loadGameTtl(): number | null {
 
 export function setGameTtl(days: number | null): void {
   if (days == null) {
-    storage.delete(GAME_TTL_KEY);
+    storage.set(GAME_TTL_KEY, 0);
   } else {
     storage.set(GAME_TTL_KEY, days);
   }
@@ -97,7 +97,7 @@ export function purgeExpiredGames(): void {
 }
 
 export function clearAllGames(): void {
-  storage.delete(GAMES_KEY);
+  persistGames([]);
 }
 
 export function restoreBackup(games: Game[], contacts: Contact[]): void {
