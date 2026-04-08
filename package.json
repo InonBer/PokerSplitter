@@ -4,10 +4,23 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "start:clear": "expo start --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "prebuild": "expo prebuild --clean",
     "web": "expo start --web",
-    "test": "jest"
+    "test": "jest",
+    "lint": "tsc --noEmit",
+    "build:ios": "eas build --platform ios --profile production",
+    "build:android": "eas build --platform android --profile production",
+    "build:all": "eas build --platform all --profile production",
+    "build:apk": "eas build --platform android --profile preview",
+    "build:ios:local": "eas build --platform ios --profile production --local",
+    "build:android:local": "eas build --platform android --profile production --local",
+    "build:apk:local": "eas build --platform android --profile preview --local",
+    "submit:ios": "eas submit --platform ios",
+    "submit:android": "eas submit --platform android",
+    "update": "eas update"
   },
   "dependencies": {
     "@react-navigation/native": "^7.2.2",
