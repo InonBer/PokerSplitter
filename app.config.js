@@ -16,7 +16,7 @@ export default ({ config }) => ({
   ios: {
     ...config.ios,
     supportsTablet: true,
-    bundleIdentifier: 'com.anonymous.PokerSplitter',
+    bundleIdentifier: 'com.inonber.pokersplitter',
     infoPlist: {
       ...(config.ios?.infoPlist ?? {}),
       LSApplicationQueriesSchemes: ['whatsapp'],
@@ -30,7 +30,7 @@ export default ({ config }) => ({
     },
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
-    package: 'com.anonymous.PokerSplitter',
+    package: 'com.inonber.pokersplitter',
   },
   web: { favicon: './assets/favicon.png' },
   plugins: [
