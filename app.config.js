@@ -17,6 +17,7 @@ export default ({ config }) => ({
     ...config.ios,
     supportsTablet: true,
     bundleIdentifier: 'com.inonber.pokersplitter',
+    buildNumber: '2',
     infoPlist: {
       ...(config.ios?.infoPlist ?? {}),
       LSApplicationQueriesSchemes: ['whatsapp'],
